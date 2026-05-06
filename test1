@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockSense — Your AI Supply Chain Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #080808;
+    --white: #f4f1ea;
+    --accent: #ff4d1c;
+    --green: #00e5a0;
+    --gray: #141414;
+    --gray2: #1e1e1e;
+    --muted: #4a4a4a;
+    --muted2: #2a2a2a;
+    --border: rgba(255,255,255,0.06);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'DM Mono', monospace;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* Cursor */
+  #cur { width:10px;height:10px;background:var(--accent);border-radius:50%;position:fixed;pointer-events:none;z-index:9999;mix-blend-mode:difference; }
+  #ring { width:34px;height:34px;border:1px solid var(--accent);border-radius:50%;position:fixed;pointer-events:none;z-index:9998;mix-blend-mode:difference;transition:all 0.18s ease; }
+
+  /* NAV */
+  nav {
+    position:fixed;top:0;left:0;right:0;z-index:100;
+    padding:18px 48px;
+    display:flex;align-items:center;justify-content:space-between;
+    background:rgba(8,8,8,0.92);
+    backdrop-filter:blur(16px);
+    border-bottom:1px solid var(--border);
+  }
+
+  .logo { font-family:'Syne',sans-serif;font-weight:800;font-size:18px;letter-spacing:-0.5px; }
+  .logo em { color:var(--accent);font-style:normal; }
+
+  .nav-pill {
+    font-size:10px;letter-spacing:2.5px;text-transform:uppercase;
+    color:var(--accent);border:1px solid rgba(255,77,28,0.3);
+    padding:5px 14px;
+  }
+
+  .nav-cta {
+    font-family:'Syne',sans-serif;font-size:12px;font-weight:700;
+    letter-spacing:0.5px;padding:8px 22px;
+    background:var(--accent);color:white;border:none;cursor:none;
+    transition:all 0.2s;
+  }
+  .nav-cta:hover { transform:translate(-1px,-1px);box-shadow:2px 2px 0 var(--green); }
+
+  /* HERO */
+  .hero {
+    min-height:100vh;
+    display:flex;flex-direction:column;justify-content:center;
+    padding:140px 48px 80px;
+    position:relative;overflow:hidden;
+  }
+
+  .hero-glow {
+    position:absolute;top:-100px;right:-200px;
+    width:700px;height:600px;
+    background:radial-gradient(ellipse,rgba(255,77,28,0.07) 0%,transparent 65%);
+    pointer-events:none;
+  }
+
+  .hero-glow2 {
+    position:absolute;bottom:-100px;left:-100px;
+    width:500px;height:400px;
+    background:radial-gradient(ellipse,rgba(0,229,160,0.04) 0%,transparent 65%);
+    pointer-events:none;
+  }
+
+  .hero-eyebrow {
+    font-size:11px;letter-spacing:3px;text-transform:uppercase;
+    color:var(--accent);margin-bottom:36px;
+    opacity:0;animation:up 0.6s ease 0.1s forwards;
+    display:flex;align-items:center;gap:12px;
+  }
+  .hero-eyebrow::before { content:'';width:28px;height:1px;background:var(--accent); }
+
+  h1 {
+    font-family:'Syne',sans-serif;
+    font-size:clamp(56px,9vw,124px);
+    font-weight:800;
+    line-height:0.88;
+    letter-spacing:-4px;
+    max-width:1000px;
+    opacity:0;animation:up 0.7s ease 0.25s forwards;
+  }
+
+  h1 .stroke { -webkit-text-stroke:1.5px var(--white);color:transparent; }
+  h1 .accent { color:var(--accent); }
+
+  .hero-sub {
+    margin-top:44px;
+    font-size:15px;color:rgba(244,241,234,0.55);
+    line-height:1.75;max-width:520px;
+    opacity:0;animation:up 0.7s ease 0.4s forwards;
+  }
+
+  .hero-sub strong { color:var(--white); }
+
+  .hero-actions {
+    margin-top:52px;
+    display:flex;gap:16px;align-items:center;flex-wrap:wrap;
+    opacity:0;animation:up 0.7s ease 0.55s forwards;
+  }
+
+  .btn-main {
+    font-family:'Syne',sans-serif;font-weight:700;font-size:14px;
+    letter-spacing:0.5px;padding:16px 40px;
+    background:var(--accent);color:white;border:none;cursor:none;
+    transition:all 0.2s;
+  }
+  .btn-main:hover { transform:translate(-2px,-2px);box-shadow:3px 3px 0 var(--green); }
+
+  .btn-ghost {
+    font-size:12px;color:var(--muted);letter-spacing:1px;
+    text-decoration:none;transition:color 0.2s;cursor:none;
+    border:none;background:none;
+  }
+  .btn-ghost:hover { color:var(--white); }
+
+  /* DIFFERENCE — the core reposition */
+  .difference {
+    padding:100px 48px;
+    border-top:1px solid var(--border);
+  }
+
+  .diff-label {
+    font-size:10px;letter-spacing:3px;text-transform:uppercase;
+    color:var(--green);margin-bottom:60px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .diff-label::before { content:'';width:28px;height:1px;background:var(--green); }
+
+  .diff-grid {
+    display:grid;grid-template-columns:1fr 80px 1fr;
+    gap:0;align-items:start;
+    max-width:1000px;
+  }
+
+  @media(max-width:768px) { .diff-grid { grid-template-columns:1fr;gap:40px; } .diff-vs { display:none; } }
+
+  .diff-col-title {
+    font-family:'Syne',sans-serif;font-size:13px;font-weight:700;
+    letter-spacing:2px;text-transform:uppercase;margin-bottom:28px;
+  }
+
+  .diff-col-title.old { color:var(--muted); }
+  .diff-col-title.new { color:var(--green); }
+
+  .diff-item {
+    padding:18px 0;
+    border-bottom:1px solid var(--border);
+    font-size:13px;line-height:1.6;
+  }
+
+  .diff-item.old-item { color:var(--muted);text-decoration:line-through;text-decoration-color:rgba(255,77,28,0.4); }
+  .diff-item.new-item { color:rgba(244,241,234,0.85); }
+  .diff-item.new-item strong { color:var(--green); }
+
+  .diff-vs {
+    display:flex;align-items:center;justify-content:center;
+    padding-top:60px;
+  }
+
+  .vs-circle {
+    width:52px;height:52px;border-radius:50%;
+    border:1px solid var(--border);
+    display:flex;align-items:center;justify-content:center;
+    font-family:'Syne',sans-serif;font-size:13px;font-weight:800;
+    color:var(--muted);
+  }
+
+  /* TICKER */
+  .ticker {
+    background:var(--accent);padding:11px 0;
+    overflow:hidden;white-space:nowrap;
+  }
+  .ticker-inner {
+    display:inline-flex;gap:56px;
+    animation:tick 24s linear infinite;
+  }
+  .ticker span { font-family:'Syne',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:white; }
+  .td { color:rgba(255,255,255,0.35); }
+  @keyframes tick { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+
+  /* HOW THE AGENT THINKS */
+  .agent-section {
+    padding:100px 48px;
+    border-top:1px solid var(--border);
+    background:var(--gray);
+  }
+
+  .agent-grid {
+    display:grid;grid-template-columns:1fr 1fr;
+    gap:80px;align-items:center;max-width:1100px;margin:0 auto;
+  }
+
+  @media(max-width:900px) { .agent-grid { grid-template-columns:1fr;gap:48px; } }
+
+  .section-eyebrow {
+    font-size:10px;letter-spacing:3px;text-transform:uppercase;
+    color:var(--accent);margin-bottom:24px;
+    display:flex;align-items:center;gap:12px;
+  }
+  .section-eyebrow::before { content:'';width:28px;height:1px;background:var(--accent); }
+
+  h2 {
+    font-family:'Syne',sans-serif;
+    font-size:clamp(36px,4vw,60px);
+    font-weight:800;letter-spacing:-2px;
+    line-height:0.95;margin-bottom:48px;
+  }
+
+  /* Agent reasoning UI */
+  .agent-ui {
+    background:var(--black);
+    border:1px solid var(--border);
+    overflow:hidden;
+  }
+
+  .ui-bar {
+    padding:12px 16px;
+    background:rgba(255,255,255,0.03);
+    border-bottom:1px solid var(--border);
+    display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);
+  }
+
+  .ui-dot { width:9px;height:9px;border-radius:50%; }
+
+  .ui-body { padding:0; }
+
+  .reasoning-step {
+    padding:18px 20px;
+    border-bottom:1px solid var(--border);
+    font-size:12px;line-height:1.7;
+  }
+
+  .reasoning-step:last-child { border-bottom:none; }
+
+  .step-label {
+    font-size:9px;letter-spacing:2px;text-transform:uppercase;
+    margin-bottom:6px;font-weight:600;
+  }
+
+  .step-label.observe { color:var(--muted); }
+  .step-label.reason { color:var(--accent); }
+  .step-label.decide { color:var(--green); }
+  .step-label.act { color:#fff; }
+
+  .step-text { color:rgba(244,241,234,0.7); }
+  .step-text strong { color:var(--white); }
+  .step-text .hi { color:var(--green); }
+  .step-text .warn { color:var(--accent); }
+
+  .step-action {
+    margin-top:12px;
+    padding:10px 14px;
+    background:rgba(0,229,160,0.06);
+    border:1px solid rgba(0,229,160,0.18);
+    font-size:11px;color:var(--green);
+    display:flex;justify-content:space-between;align-items:center;
+  }
+
+  /* Steps list */
+  .steps { display:flex;flex-direction:column;gap:0; }
+
+  .step {
+    display:flex;gap:20px;padding:24px 0;
+    border-bottom:1px solid var(--border);
+    transition:all 0.2s;
+  }
+
+  .step:hover .step-n { color:var(--accent); }
+
+  .step-n {
+    font-family:'Syne',sans-serif;font-size:12px;font-weight:700;
+    color:var(--muted);min-width:24px;margin-top:2px;
+    transition:color 0.2s;
+  }
+
+  .step-body {}
+  .step-title { font-family:'Syne',sans-serif;font-size:17px;font-weight:700;margin-bottom:6px; }
+  .step-desc { font-size:12px;color:var(--muted);line-height:1.7; }
+
+  /* STATS */
+  .stats {
+    display:grid;grid-template-columns:repeat(4,1fr);
+    border-top:1px solid var(--border);
+    border-bottom:1px solid var(--border);
+  }
+
+  @media(max-width:700px) { .stats { grid-template-columns:1fr 1fr; } }
+
+  .stat {
+    padding:52px 40px;
+    border-right:1px solid var(--border);
+    transition:background 0.3s;
+  }
+  .stat:last-child { border-right:none; }
+  .stat:hover { background:var(--gray); }
+
+  .stat-n {
+    font-family:'Syne',sans-serif;
+    font-size:58px;font-weight:800;letter-spacing:-3px;line-height:1;
+    color:var(--accent);
+  }
+
+  .stat-l { font-size:11px;color:var(--muted);margin-top:10px;letter-spacing:1px;line-height:1.5; }
+
+  /* PRICING */
+  .pricing { padding:100px 48px;border-top:1px solid var(--border); }
+
+  .pricing-grid {
+    display:grid;grid-template-columns:repeat(3,1fr);
+    border:1px solid var(--border);
+    max-width:960px;margin:60px auto 0;
+  }
+
+  @media(max-width:800px) { .pricing-grid { grid-template-columns:1fr; } }
+
+  .plan {
+    padding:44px 36px;
+    border-right:1px solid var(--border);
+    position:relative;transition:background 0.3s;
+  }
+  .plan:last-child { border-right:none; }
+  .plan:hover { background:var(--gray); }
+  .plan.hot { background:var(--gray2);border:1px solid rgba(255,77,28,0.4); }
+
+  .plan-badge {
+    position:absolute;top:-1px;left:36px;
+    background:var(--accent);color:white;
+    font-family:'Syne',sans-serif;font-size:9px;
+    font-weight:700;letter-spacing:2px;text-transform:uppercase;
+    padding:3px 10px;
+  }
+
+  .plan-name {
+    font-size:10px;letter-spacing:2.5px;text-transform:uppercase;
+    color:var(--muted);margin-bottom:20px;
+  }
+
+  .plan-price {
+    font-family:'Syne',sans-serif;font-size:52px;
+    font-weight:800;letter-spacing:-2px;line-height:1;margin-bottom:6px;
+  }
+
+  .plan-price sup { font-size:22px;vertical-align:top;margin-top:10px; }
+  .plan-price small { font-size:16px;font-weight:400;color:var(--muted);letter-spacing:0; }
+
+  .plan-desc { font-size:11px;color:var(--muted);margin-bottom:32px;line-height:1.6; }
+
+  .plan-feats { list-style:none;margin-bottom:36px; }
+  .plan-feats li {
+    font-size:12px;padding:8px 0;
+    border-bottom:1px solid var(--border);
+    display:flex;gap:10px;align-items:flex-start;
+    color:rgba(244,241,234,0.75);
+  }
+  .plan-feats li::before { content:'→';color:var(--green);font-size:11px;margin-top:1px;flex-shrink:0; }
+
+  .plan-btn {
+    display:block;text-align:center;
+    padding:13px;cursor:none;
+    font-family:'Syne',sans-serif;font-size:12px;
+    font-weight:700;letter-spacing:1px;text-transform:uppercase;
+    text-decoration:none;transition:all 0.2s;border:1px solid;
+  }
+
+  .plan-btn.outline { border-color:rgba(255,255,255,0.15);color:var(--white); }
+  .plan-btn.outline:hover { border-color:var(--white);background:rgba(255,255,255,0.04); }
+  .plan-btn.filled { background:var(--accent);border-color:var(--accent);color:white; }
+  .plan-btn.filled:hover { background:transparent;color:var(--accent); }
+
+  /* WAITLIST */
+  .waitlist {
+    padding:100px 48px;
+    border-top:1px solid var(--border);
+    background:var(--gray);
+    text-align:center;
+  }
+
+  .wl-title {
+    font-family:'Syne',sans-serif;
+    font-size:clamp(44px,7vw,88px);
+    font-weight:800;letter-spacing:-3px;line-height:0.9;
+    margin-bottom:20px;
+  }
+
+  .wl-title .stroke { -webkit-text-stroke:1.5px var(--white);color:transparent; }
+
+  .wl-sub { font-size:13px;color:var(--muted);margin-bottom:48px; }
+
+  .wl-form { display:flex;gap:0;max-width:460px;margin:0 auto 16px; }
+
+  .wl-input {
+    flex:1;background:var(--black);
+    border:1px solid rgba(255,255,255,0.12);border-right:none;
+    color:var(--white);font-family:'DM Mono',monospace;font-size:13px;
+    padding:14px 18px;outline:none;transition:border-color 0.2s;
+  }
+  .wl-input:focus { border-color:rgba(255,77,28,0.5); }
+  .wl-input::placeholder { color:var(--muted); }
+
+  .wl-btn {
+    background:var(--accent);border:1px solid var(--accent);
+    color:white;font-family:'Syne',sans-serif;
+    font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;
+    padding:14px 24px;cursor:none;transition:all 0.2s;white-space:nowrap;
+  }
+  .wl-btn:hover { background:transparent;color:var(--accent); }
+
+  .wl-note { font-size:10px;color:var(--muted);letter-spacing:1px; }
+
+  .wl-success {
+    display:none;padding:14px 24px;
+    background:rgba(0,229,160,0.08);
+    border:1px solid rgba(0,229,160,0.25);
+    color:var(--green);font-size:13px;
+    max-width:460px;margin:0 auto;
+  }
+
+  /* FOOTER */
+  footer {
+    padding:32px 48px;
+    border-top:1px solid var(--border);
+    display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;
+  }
+
+  .footer-logo { font-family:'Syne',sans-serif;font-weight:800;font-size:16px; }
+  .footer-logo em { color:var(--accent);font-style:normal; }
+  .footer-note { font-size:11px;color:var(--muted); }
+
+  /* ANIMS */
+  @keyframes up { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+  .reveal { opacity:0;transform:translateY(24px);transition:opacity 0.65s ease,transform 0.65s ease; }
+  .reveal.in { opacity:1;transform:translateY(0); }
+
+  @media(max-width:600px) {
+    nav { padding:16px 20px; }
+    .hero { padding:100px 20px 60px; }
+    .difference,.agent-section,.pricing,.waitlist { padding:60px 20px; }
+    .stat { padding:32px 20px; }
+    footer { padding:24px 20px; }
+    .wl-form { flex-direction:column; }
+    .wl-input { border-right:1px solid rgba(255,255,255,0.12);border-bottom:none; }
+    .wl-btn { width:100%; }
+  }
+</style>
+</head>
+<body>
+
+<div id="cur"></div>
+<div id="ring"></div>
+
+<nav>
+  <div class="logo">Stock<em>Sense</em></div>
+  <div class="nav-pill">AI Agent · Not a Tool</div>
+  <button class="nav-cta" onclick="document.getElementById('waitlist').scrollIntoView({behavior:'smooth'})">Early Access →</button>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-glow2"></div>
+
+  <div class="hero-eyebrow">The first AI-native supply chain agent</div>
+
+  <h1>
+    Not a tool.<br>
+    An <span class="accent">agent</span><br>
+    that <span class="stroke">thinks.</span>
+  </h1>
+
+  <p class="hero-sub">
+    Every inventory tool tells you what's happening. <strong>StockSense decides what to do about it.</strong> It reasons through your data, understands your suppliers, and acts — autonomously — before stockouts cost you money.
+  </p>
+
+  <div class="hero-actions">
+    <button class="btn-main" onclick="document.getElementById('waitlist').scrollIntoView({behavior:'smooth'})">Join the Waitlist →</button>
+    <button class="btn-ghost" onclick="document.getElementById('difference').scrollIntoView({behavior:'smooth'})">See the difference ↓</button>
+  </div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-inner">
+    <span>Reasons <span class="td">◆</span></span>
+    <span>Decides <span class="td">◆</span></span>
+    <span>Acts <span class="td">◆</span></span>
+    <span>Explains <span class="td">◆</span></span>
+    <span>Learns <span class="td">◆</span></span>
+    <span>AI-Native <span class="td">◆</span></span>
+    <span>Not a Dashboard <span class="td">◆</span></span>
+    <span>Not an Alert <span class="td">◆</span></span>
+    <span>An Agent <span class="td">◆</span></span>
+    <span>Reasons <span class="td">◆</span></span>
+    <span>Decides <span class="td">◆</span></span>
+    <span>Acts <span class="td">◆</span></span>
+    <span>Explains <span class="td">◆</span></span>
+    <span>Learns <span class="td">◆</span></span>
+    <span>AI-Native <span class="td">◆</span></span>
+    <span>Not a Dashboard <span class="td">◆</span></span>
+    <span>Not an Alert <span class="td">◆</span></span>
+    <span>An Agent <span class="td">◆</span></span>
+  </div>
+</div>
+
+<!-- DIFFERENCE -->
+<section class="difference" id="difference">
+  <div class="diff-label">The difference</div>
+
+  <div class="diff-grid">
+    <div>
+      <div class="diff-col-title old">Every other tool</div>
+      <div class="diff-item old-item">Shows you a dashboard of stock levels</div>
+      <div class="diff-item old-item">Sends an alert when you're already too late</div>
+      <div class="diff-item old-item">Tells you what happened</div>
+      <div class="diff-item old-item">You still decide what to order and when</div>
+      <div class="diff-item old-item">Black box — you don't know why it flagged something</div>
+      <div class="diff-item old-item">Generic AI layered on old architecture</div>
+      <div class="diff-item old-item">Works for Amazon OR Shopify</div>
+    </div>
+
+    <div class="diff-vs"><div class="vs-circle">VS</div></div>
+
+    <div>
+      <div class="diff-col-title new">StockSense Agent</div>
+      <div class="diff-item new-item"><strong>Reasons</strong> through your data like an ops manager</div>
+      <div class="diff-item new-item">Predicts stockouts <strong>weeks before</strong> they happen</div>
+      <div class="diff-item new-item">Tells you what to do — and <strong>exactly why</strong></div>
+      <div class="diff-item new-item">Generates purchase orders <strong>autonomously</strong></div>
+      <div class="diff-item new-item"><strong>Explains every decision</strong> in plain language</div>
+      <div class="diff-item new-item"><strong>Born AI-first</strong> — agent architecture from day one</div>
+      <div class="diff-item new-item">Amazon + Shopify + WooCommerce + <strong>all channels</strong></div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat reveal">
+    <div class="stat-n">$1.8T</div>
+    <div class="stat-l">lost globally per year to inventory distortion</div>
+  </div>
+  <div class="stat reveal">
+    <div class="stat-n">34%</div>
+    <div class="stat-l">avg revenue lost to stockouts annually per seller</div>
+  </div>
+  <div class="stat reveal">
+    <div class="stat-n">72h</div>
+    <div class="stat-l">avg time for existing tools to detect an issue</div>
+  </div>
+  <div class="stat reveal">
+    <div class="stat-n">0</div>
+    <div class="stat-l">tools that explain WHY they make a recommendation</div>
+  </div>
+</div>
+
+<!-- HOW THE AGENT THINKS -->
+<section class="agent-section">
+  <div class="agent-grid">
+    <div>
+      <div class="section-eyebrow">How it works</div>
+      <h2>The agent<br>that reasons<br><span style="color:var(--accent)">out loud.</span></h2>
+      <div class="steps">
+        <div class="step reveal">
+          <div class="step-n">01</div>
+          <div class="step-body">
+            <div class="step-title">Observes your entire operation</div>
+            <div class="step-desc">Connects to every channel — Amazon, Shopify, WooCommerce. Ingests sales velocity, supplier lead times, seasonal patterns. Builds a live model of your specific business.</div>
+          </div>
+        </div>
+        <div class="step reveal">
+          <div class="step-n">02</div>
+          <div class="step-body">
+            <div class="step-title">Reasons through the data</div>
+            <div class="step-desc">Not just "stock is low." It reasons: given your velocity, your supplier's real lead time, the upcoming season — what does this mean? What's the financial cost of inaction?</div>
+          </div>
+        </div>
+        <div class="step reveal">
+          <div class="step-n">03</div>
+          <div class="step-body">
+            <div class="step-title">Decides and explains</div>
+            <div class="step-desc">Generates a specific recommendation with full reasoning in plain language. Not a black box. You see exactly why the agent decided what it decided.</div>
+          </div>
+        </div>
+        <div class="step reveal">
+          <div class="step-n">04</div>
+          <div class="step-body">
+            <div class="step-title">Acts with your approval</div>
+            <div class="step-desc">Drafts purchase orders, optimizes supplier consolidation, updates reorder points. One click to approve. You stay in control — the agent does the work.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Agent reasoning mockup -->
+    <div class="agent-ui reveal">
+      <div class="ui-bar">
+        <div class="ui-dot" style="background:#ff5f57"></div>
+        <div class="ui-dot" style="background:#febc2e"></div>
+        <div class="ui-dot" style="background:#28c840"></div>
+        <span style="margin-left:8px">StockSense · Agent Reasoning</span>
+      </div>
+      <div class="ui-body">
+        <div class="reasoning-step">
+          <div class="step-label observe">→ Observing</div>
+          <div class="step-text">Helmet Safety V2 — current stock: <strong>8 units</strong>. Daily velocity: <strong>3.8 units/day</strong>. Days remaining: <span class="warn">~2 days</span>.</div>
+        </div>
+        <div class="reasoning-step">
+          <div class="step-label reason">→ Reasoning</div>
+          <div class="step-text">Supplier SafeGear EU has a <strong>14-day lead time</strong>. Summer season starts in <strong>28 days</strong> — historical demand increases <strong>+40%</strong>. If we order today, stock arrives in 14 days. At current velocity we'll be empty in <span class="warn">2 days</span>. This is a <span class="warn">critical gap of 12 days with zero stock</span> during pre-peak season.</div>
+        </div>
+        <div class="reasoning-step">
+          <div class="step-label decide">→ Decision</div>
+          <div class="step-text">Order <strong>180 units</strong> immediately. This covers the 12-day gap + 90 days of summer-adjusted demand. Consolidating with SKU-003 order to same supplier saves <span class="hi">~€340 in shipping</span>.</div>
+        </div>
+        <div class="reasoning-step" style="border-bottom:none">
+          <div class="step-label act">→ Action Generated</div>
+          <div class="step-action">
+            <span>📋 Purchase Order · SafeGear EU · 180 units · €4,320</span>
+            <span style="color:rgba(0,229,160,0.6);font-size:10px">Awaiting approval →</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing">
+  <div class="section-eyebrow" style="justify-content:center">Pricing</div>
+  <h2 style="text-align:center;margin-bottom:0">Simple.<br>Transparent.</h2>
+
+  <div class="pricing-grid">
+    <div class="plan reveal">
+      <div class="plan-name">Starter</div>
+      <div class="plan-price"><sup>$</sup>49<small>/mo</small></div>
+      <div class="plan-desc">For solo operators getting started with AI inventory.</div>
+      <ul class="plan-feats">
+        <li>Up to 50 SKUs</li>
+        <li>Amazon + Shopify</li>
+        <li>AI reasoning + explanations</li>
+        <li>Email alerts & PO drafts</li>
+        <li>30-day demand forecast</li>
+        <li>1 user</li>
+      </ul>
+      <a href="#waitlist" class="plan-btn outline">Get Early Access</a>
+    </div>
+
+    <div class="plan hot reveal">
+      <div class="plan-badge">Most Popular</div>
+      <div class="plan-name">Agent</div>
+      <div class="plan-price"><sup>$</sup>149<small>/mo</small></div>
+      <div class="plan-desc">Full autonomous agent for scaling ecommerce brands.</div>
+      <ul class="plan-feats">
+        <li>Unlimited SKUs</li>
+        <li>All channels + multi-warehouse</li>
+        <li>Autonomous PO generation</li>
+        <li>Supplier consolidation AI</li>
+        <li>90-day AI forecast</li>
+        <li>Slack + email + SMS</li>
+        <li>5 users</li>
+      </ul>
+      <a href="#waitlist" class="plan-btn filled">Get Early Access</a>
+    </div>
+
+    <div class="plan reveal">
+      <div class="plan-name">Enterprise</div>
+      <div class="plan-price" style="font-size:36px;letter-spacing:-1px">Custom</div>
+      <div class="plan-desc">For brands with complex supply chains and large teams.</div>
+      <ul class="plan-feats">
+        <li>Custom SKU limits</li>
+        <li>ERP integrations (SAP, NetSuite)</li>
+        <li>Dedicated agent training</li>
+        <li>API access + white-label</li>
+        <li>SLA + dedicated support</li>
+        <li>Unlimited users</li>
+      </ul>
+      <a href="#waitlist" class="plan-btn outline">Contact Us</a>
+    </div>
+  </div>
+</section>
+
+<!-- WAITLIST -->
+<section class="waitlist" id="waitlist">
+  <h2 class="wl-title reveal">Stop<br>managing.<br><span class="stroke">Start</span><br><span style="color:var(--accent)">delegating.</span></h2>
+  <p class="wl-sub reveal">Join the waitlist. First 100 get 3 months free.</p>
+  <div class="wl-form reveal" id="wlForm">
+    <input type="email" class="wl-input" placeholder="your@email.com" id="wlEmail">
+    <button class="wl-btn" onclick="joinWaitlist()">Join →</button>
+  </div>
+  <div class="wl-success" id="wlSuccess">✓ You're in. We'll reach out soon.</div>
+  <p class="wl-note reveal">No credit card. No spam. Cancel anytime.</p>
+</section>
+
+<footer>
+  <div class="footer-logo">Stock<em>Sense</em></div>
+  <div class="footer-note">© 2026 StockSense · AI-native supply chain agent</div>
+</footer>
+
+<script>
+  // Cursor
+  const cur=document.getElementById('cur'),ring=document.getElementById('ring');
+  let mx=0,my=0,rx=0,ry=0;
+  document.addEventListener('mousemove',e=>{
+    mx=e.clientX;my=e.clientY;
+    cur.style.left=mx-5+'px';cur.style.top=my-5+'px';
+  });
+  (function loop(){rx+=(mx-rx-17)*0.12;ry+=(my-ry-17)*0.12;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(loop);})();
+
+  // Reveal
+  const obs=new IntersectionObserver(entries=>{
+    entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('in');});
+  },{threshold:0.1});
+  document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+
+  // Waitlist
+  function joinWaitlist(){
+    const email=document.getElementById('wlEmail').value;
+    if(!email||!email.includes('@')){
+      document.getElementById('wlEmail').style.borderColor='var(--accent)';
+      return;
+    }
+    document.getElementById('wlForm').style.display='none';
+    document.getElementById('wlSuccess').style.display='block';
+  }
+</script>
+</body>
+</html>
