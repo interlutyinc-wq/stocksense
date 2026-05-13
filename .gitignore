@@ -1,0 +1,26 @@
+# Dependencies & builds
+**/node_modules/
+**/.next/
+**/out/
+**/dist/
+**/.turbo/
+
+# Env & secrets (keep *.example committed)
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Vercel
+.vercel
