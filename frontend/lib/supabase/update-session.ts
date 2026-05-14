@@ -1,8 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+/**
+ * Refreshes the Supabase auth session (cookies). Intended for Next.js 16+
+ * `proxy.ts` (Node runtime), not Edge `middleware.ts`.
+ */
+export async function updateSupabaseSession(request: NextRequest) {
+  let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://example.supabase.co",
@@ -16,9 +20,9 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value),
           );
-          supabaseResponse = NextResponse.next({ request });
+          response = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options),
+            response.cookies.set(name, value, options),
           );
         },
       },
@@ -27,5 +31,5 @@ export async function updateSession(request: NextRequest) {
 
   await supabase.auth.getUser();
 
-  return supabaseResponse;
+  return response;
 }

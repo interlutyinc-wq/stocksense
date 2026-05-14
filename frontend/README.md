@@ -39,3 +39,7 @@ Dal root del monorepo: `npm run dev` (vedi `package.json` nella root).
 ## Deploy (Vercel)
 
 Imposta **Root Directory** su `frontend` e le stesse variabili d’ambiente del file `.env.local.example`.
+
+### Auth / Supabase e Next.js 16
+
+Non usare `middleware.ts` con `@supabase/ssr`: su Vercel l’Edge bundler segnala moduli non supportati. Questo progetto usa **`proxy.ts`** (runtime Node in Next 16) e `lib/supabase/update-session.ts` per aggiornare la sessione; vedi [Next.js Proxy](https://nextjs.org/docs/app/getting-started/proxy) e la guida Supabase SSR.
