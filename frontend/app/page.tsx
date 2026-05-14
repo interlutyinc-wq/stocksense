@@ -54,14 +54,12 @@ export default function Home() {
           >
             Start onboarding →
           </Link>
-          <a
-            href="https://stocksense-tawny.vercel.app/"
+          <Link
+            href="/marketing"
             className="font-mono text-xs text-ss-muted transition hover:text-ss-cream"
-            target="_blank"
-            rel="noopener noreferrer"
           >
             View marketing site
-          </a>
+          </Link>
         </div>
       </main>
     </div>

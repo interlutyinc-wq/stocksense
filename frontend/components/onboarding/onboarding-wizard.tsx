@@ -287,6 +287,12 @@ export function OnboardingWizard() {
           <span className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-ss-muted sm:inline">
             Onboarding
           </span>
+          <Link
+            href="/marketing"
+            className="hidden font-mono text-xs text-ss-muted underline-offset-4 hover:text-ss-cream hover:underline sm:inline"
+          >
+            Marketing
+          </Link>
           {user ? (
             <button
               type="button"
