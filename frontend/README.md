@@ -40,6 +40,12 @@ Dal root del monorepo: `npm run dev` (vedi `package.json` nella root).
 
 Imposta **Root Directory** su `frontend` e le stesse variabili d’ambiente del file `.env.local.example`.
 
+**Framework preset:** deve essere **Next.js** (non “Other”). In `frontend/` c’è `vercel.json` con `"framework": "nextjs"` per ridurre ambiguità.
+
+La build di produzione usa **`next build --webpack`** (vedi `package.json`): con Turbopack, alcuni deploy Next 16 su Vercel hanno restituito **404 su tutte le URL** (inclusi asset statici); Webpack evita quel problema noto.
+
+Se dopo un deploy verde vedi ancora `404: NOT_FOUND` ovunque, in dashboard controlla che il dominio sia collegato a **questo** progetto e, come ultima risorsa, crea un **nuovo progetto Vercel** dallo stesso repo (a volte il routing resta corrotto dopo una serie di build fallite).
+
 ### Auth / Supabase (nessun middleware / proxy)
 
 Non usare **`middleware.ts`** né **`proxy.ts`** con `@supabase/ssr` su questo stack: l’Edge bundler di Vercel rifiuta dipendenze transitive, e con **Next.js 16** un `proxy.ts` che chiama `NextResponse.next({ request })` è associato a [bug di routing (404)](https://github.com/vercel/next.js/issues/92921) in alcuni ambienti.
