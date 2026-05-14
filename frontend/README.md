@@ -40,6 +40,8 @@ Dal root del monorepo: `npm run dev` (vedi `package.json` nella root).
 
 Imposta **Root Directory** su `frontend` e le stesse variabili d’ambiente del file `.env.local.example`.
 
-### Auth / Supabase e Next.js 16
+### Auth / Supabase (nessun middleware / proxy)
 
-Non usare `middleware.ts` con `@supabase/ssr`: su Vercel l’Edge bundler segnala moduli non supportati. Questo progetto usa **`proxy.ts`** (runtime Node in Next 16) e `lib/supabase/update-session.ts` per aggiornare la sessione; vedi [Next.js Proxy](https://nextjs.org/docs/app/getting-started/proxy) e la guida Supabase SSR.
+Non usare **`middleware.ts`** né **`proxy.ts`** con `@supabase/ssr` su questo stack: l’Edge bundler di Vercel rifiuta dipendenze transitive, e con **Next.js 16** un `proxy.ts` che chiama `NextResponse.next({ request })` è associato a [bug di routing (404)](https://github.com/vercel/next.js/issues/92921) in alcuni ambienti.
+
+L’MVP usa solo **`lib/supabase/client.ts`** (browser) e **`lib/supabase/server.ts`** (Server Components / Route Handler). Il refresh della sessione avviene lato client; in seguito si può aggiungere una route **`/api/auth/refresh`** (solo Node) se servisse rinnovo esplicito lato server.
