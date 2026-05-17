@@ -42,6 +42,10 @@ export function OnboardingWizard() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [authBusy, setAuthBusy] = useState(false);
 
+  const [resetSent, setResetSent] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+
   const [shopInput, setShopInput] = useState("");
   const [shopifyBusy, setShopifyBusy] = useState(false);
   const [connectedShop, setConnectedShop] = useState<string | null>(null);
@@ -392,6 +396,8 @@ export function OnboardingWizard() {
                   onClick={() => {
                     setAuthMode("signup");
                     setAuthError(null);
+                    setResetSent(false);
+                    setResetError(null);
                   }}
                   className={`flex-1 border py-2 font-sans text-xs font-bold ${
                     authMode === "signup"
@@ -406,6 +412,8 @@ export function OnboardingWizard() {
                   onClick={() => {
                     setAuthMode("login");
                     setAuthError(null);
+                    setResetSent(false);
+                    setResetError(null);
                   }}
                   className={`flex-1 border py-2 font-sans text-xs font-bold ${
                     authMode === "login"
@@ -437,12 +445,42 @@ export function OnboardingWizard() {
                   />
                 </div>
                 <div>
-                  <label
-                    htmlFor="password"
-                    className="font-mono text-[10px] uppercase tracking-wider text-ss-muted"
-                  >
-                    Password
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label
+                      htmlFor="password"
+                      className="font-mono text-[10px] uppercase tracking-wider text-ss-muted"
+                    >
+                      Password
+                    </label>
+                    {authMode === "login" && (
+                      <button
+                        type="button"
+                        disabled={resetBusy}
+                        onClick={async () => {
+                          setResetError(null);
+                          const trimmed = email.trim();
+                          if (!trimmed) {
+                            setResetError("Inserisci prima la tua email.");
+                            return;
+                          }
+                          setResetBusy(true);
+                          const { error } =
+                            await supabase.auth.resetPasswordForEmail(trimmed, {
+                              redirectTo: `${window.location.origin}/auth/callback`,
+                            });
+                          setResetBusy(false);
+                          if (error) {
+                            setResetError(error.message);
+                          } else {
+                            setResetSent(true);
+                          }
+                        }}
+                        className="font-mono text-[10px] text-ss-muted underline-offset-2 transition hover:text-ss-cream hover:underline disabled:opacity-50"
+                      >
+                        {resetBusy ? "Invio…" : "Password dimenticata?"}
+                      </button>
+                    )}
+                  </div>
                   <input
                     id="password"
                     name="password"
@@ -457,6 +495,17 @@ export function OnboardingWizard() {
                     className="mt-1.5 w-full border border-white/[0.1] bg-ss-black px-3 py-2.5 font-mono text-sm text-ss-cream outline-none ring-ss-accent/30 focus:ring-2"
                   />
                 </div>
+                {resetSent && (
+                  <div
+                    role="status"
+                    className="border border-ss-green/40 bg-ss-green/10 px-4 py-3 font-mono text-xs text-ss-green"
+                  >
+                    Controlla la tua email per il link di reset.
+                  </div>
+                )}
+                {resetError && (
+                  <p className="font-mono text-xs text-ss-accent">{resetError}</p>
+                )}
                 {authError ? (
                   <p className="font-mono text-xs text-ss-accent">{authError}</p>
                 ) : null}
