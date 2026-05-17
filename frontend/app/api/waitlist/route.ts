@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 const corsHeaders: Record<string, string> = {
@@ -20,12 +20,6 @@ export async function OPTIONS() {
 }
 
 export async function POST(request: Request) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) {
-    return json({ error: "Server configuration missing" }, 500);
-  }
-
   let body: unknown;
   try {
     body = await request.json();
@@ -45,10 +39,7 @@ export async function POST(request: Request) {
     return json({ error: "Valid email required" }, 400);
   }
 
-  const supabase = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
+  const supabase = await createClient();
   const { error } = await supabase.from("waitlist").insert({ email: emailRaw });
 
   if (error) {
