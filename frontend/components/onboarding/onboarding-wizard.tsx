@@ -196,29 +196,58 @@ export function OnboardingWizard() {
     setAuthBusy(true);
     const origin = window.location.origin;
 
-    if (authMode === "signup") {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { emailRedirectTo: `${origin}/auth/callback` },
-      });
-      setAuthBusy(false);
-      if (error) {
-        setAuthError(error.message);
-        return;
+    try {
+      if (authMode === "signup") {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: `${origin}/auth/callback` },
+        });
+
+        if (error) {
+          setAuthError(error.message);
+          return;
+        }
+
+        // data.user is null when Supabase "Prevent email enumeration" is ON
+        // and the address is already registered — the API returns success but
+        // creates nothing. Surface a clear message instead of silently failing.
+        if (!data.user) {
+          setAuthError(
+            "Registrazione non completata. Se hai già un account, usa Log in.",
+          );
+          return;
+        }
+
+        // data.session is non-null only when email confirmation is disabled in
+        // the Supabase project (auto-confirm). In that case the user is already
+        // signed in and we skip the "check email" step.
+        if (data.session) {
+          router.replace("/onboarding?step=2");
+        } else {
+          router.replace("/onboarding?step=1&notice=check_email");
+        }
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) {
+          setAuthError(error.message);
+          return;
+        }
+
+        router.replace("/onboarding?step=2");
       }
-      router.replace("/onboarding?step=1&notice=check_email");
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+    } catch (err) {
+      // Network failures or unexpected SDK throws — ensure the button
+      // is always re-enabled and the user gets a readable message.
+      setAuthError(
+        err instanceof Error ? err.message : "Errore di connessione. Riprova.",
+      );
+    } finally {
       setAuthBusy(false);
-      if (error) {
-        setAuthError(error.message);
-        return;
-      }
-      router.replace("/onboarding?step=2");
     }
   }
 
