@@ -466,7 +466,7 @@ export function OnboardingWizard() {
                           setResetBusy(true);
                           const { error } =
                             await supabase.auth.resetPasswordForEmail(trimmed, {
-                              redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
+                              redirectTo: `${window.location.origin}/auth/reset-password`,
                             });
                           setResetBusy(false);
                           if (error) {
