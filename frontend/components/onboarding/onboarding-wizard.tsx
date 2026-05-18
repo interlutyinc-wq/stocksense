@@ -207,7 +207,7 @@ export function OnboardingWizard() {
     setGoogleBusy(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=/onboarding?step=2` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/onboarding?step=2")}` },
     });
     if (error) {
       setAuthError(error.message);
