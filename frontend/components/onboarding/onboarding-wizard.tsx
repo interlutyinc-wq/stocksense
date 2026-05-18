@@ -72,6 +72,13 @@ export function OnboardingWizard() {
   const [suppliers, setSuppliers] = useState<SupplierRow[]>([]);
   const [suppliersLoading, setSuppliersLoading] = useState(false);
 
+  // Auto-import from Shopify vendor field
+  type VendorDraft = { name: string; skus: string[]; email: string };
+  const [vendorDrafts, setVendorDrafts] = useState<VendorDraft[]>([]);
+  const [importBusy, setImportBusy] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [savingBulk, setSavingBulk] = useState(false);
+
   const urlStep = useMemo(() => {
     const s = Number.parseInt(searchParams.get("step") || "1", 10);
     if (s === 2 || s === 3) return s;
@@ -316,6 +323,56 @@ export function OnboardingWizard() {
     setSupplierName("");
     setSupplierEmail("");
     setSupplierSkus("");
+    router.replace("/onboarding?step=3&notice=supplier_saved");
+  }
+
+  async function handleAutoImport() {
+    setImportBusy(true);
+    setImportError(null);
+    setVendorDrafts([]);
+    try {
+      const res = await fetch("/api/shopify/vendors");
+      const data = (await res.json()) as { vendors?: VendorDraft[]; error?: string };
+      if (!res.ok || data.error) {
+        setImportError(data.error ?? "Failed to fetch vendors.");
+        return;
+      }
+      const drafts = (data.vendors ?? []).map((v) => ({ ...v, email: "" }));
+      if (drafts.length === 0) {
+        setImportError("No new vendors found in your Shopify products.");
+        return;
+      }
+      setVendorDrafts(drafts);
+    } catch {
+      setImportError("Network error. Please try again.");
+    } finally {
+      setImportBusy(false);
+    }
+  }
+
+  async function handleBulkSave() {
+    if (!user) return;
+    const toSave = vendorDrafts.filter((v) => v.email.trim());
+    if (toSave.length === 0) {
+      setImportError("Add at least one email before saving.");
+      return;
+    }
+    setSavingBulk(true);
+    setImportError(null);
+    const rows = toSave.map((v) => ({
+      user_id: user.id,
+      name: v.name,
+      email: v.email.trim().toLowerCase(),
+      skus: v.skus,
+      updated_at: new Date().toISOString(),
+    }));
+    const { error } = await supabase.from("suppliers").insert(rows);
+    setSavingBulk(false);
+    if (error) {
+      setImportError(error.message);
+      return;
+    }
+    setVendorDrafts([]);
     router.replace("/onboarding?step=3&notice=supplier_saved");
   }
 
@@ -693,6 +750,78 @@ export function OnboardingWizard() {
                 </p>
               ) : (
                 <>
+                  {/* ── Auto-import from Shopify vendors ── */}
+                  <div className="mt-6 border border-white/[0.06] bg-ss-black/40 p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="font-sans text-sm font-bold text-ss-cream">
+                          Auto-import from Shopify
+                        </p>
+                        <p className="mt-0.5 font-mono text-[11px] text-ss-muted">
+                          Detects vendors from your product catalog and pre-fills name + SKUs.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void handleAutoImport()}
+                        disabled={importBusy}
+                        className="shrink-0 border border-ss-green/40 bg-ss-green/10 px-4 py-2 font-sans text-xs font-bold text-ss-green transition hover:bg-ss-green/20 disabled:opacity-50"
+                      >
+                        {importBusy ? "Detecting…" : "↓ Import vendors"}
+                      </button>
+                    </div>
+
+                    {importError && (
+                      <p className="mt-3 font-mono text-xs text-ss-accent">{importError}</p>
+                    )}
+
+                    {vendorDrafts.length > 0 && (
+                      <div className="mt-4 space-y-3">
+                        <p className="font-mono text-[10px] uppercase tracking-wider text-ss-muted">
+                          {vendorDrafts.length} vendor{vendorDrafts.length > 1 ? "s" : ""} detected — add email to save
+                        </p>
+                        {vendorDrafts.map((v, i) => (
+                          <div key={i} className="border border-white/[0.06] bg-ss-black p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="font-sans text-sm font-bold text-ss-cream">{v.name}</p>
+                                <p className="mt-1 font-mono text-[10px] text-ss-muted">
+                                  {v.skus.length} SKU{v.skus.length !== 1 ? "s" : ""}
+                                  {v.skus.length > 0 && `: ${v.skus.slice(0, 3).join(", ")}${v.skus.length > 3 ? "…" : ""}`}
+                                </p>
+                              </div>
+                              <input
+                                type="email"
+                                placeholder="contact@supplier.com"
+                                value={v.email}
+                                onChange={(e) => {
+                                  const updated = [...vendorDrafts];
+                                  updated[i] = { ...updated[i], email: e.target.value };
+                                  setVendorDrafts(updated);
+                                }}
+                                className="w-48 shrink-0 border border-white/[0.1] bg-ss-surface px-2 py-1.5 font-mono text-xs text-ss-cream outline-none ring-ss-accent/30 placeholder:text-ss-muted/50 focus:ring-2"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => void handleBulkSave()}
+                          disabled={savingBulk}
+                          className="w-full border border-ss-green/40 bg-ss-green/15 py-2.5 font-sans text-sm font-bold text-ss-green transition hover:bg-ss-green/25 disabled:opacity-50"
+                        >
+                          {savingBulk ? "Saving…" : `Save ${vendorDrafts.filter(v => v.email.trim()).length || "all"} suppliers →`}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-6 flex items-center gap-3">
+                    <div className="h-px flex-1 bg-white/[0.06]" />
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-ss-muted">or add manually</span>
+                    <div className="h-px flex-1 bg-white/[0.06]" />
+                  </div>
+
                   <form
                     onSubmit={handleSupplierSubmit}
                     className="mt-6 space-y-4"
