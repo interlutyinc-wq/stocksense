@@ -84,10 +84,9 @@ export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
         {/* ── Benvenuto ── */}
         <div className="relative overflow-hidden border border-white/[0.06] bg-ss-surface p-6 md:p-8">
           <div
-            className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full opacity-30"
+            className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full opacity-20 blur-3xl"
             style={{
-              background:
-                "radial-gradient(ellipse, rgba(255,77,28,0.18) 0%, transparent 70%)",
+              background: "rgba(255,77,28,0.5)",
             }}
             aria-hidden
           />
