@@ -455,6 +455,19 @@ export function OnboardingWizard() {
                 {googleBusy ? "Redirecting…" : "Continue with Google"}
               </button>
 
+              {authError?.includes("disallowed_useragent") && (
+                <p className="mt-2 font-mono text-[11px] leading-relaxed text-ss-muted">
+                  Google login is blocked in in-app browsers.{" "}
+                  <span className="text-ss-cream">
+                    Open this page directly in Safari or Chrome.
+                  </span>
+                </p>
+              )}
+
+              <p className="mt-2 font-mono text-[10px] text-ss-muted/60">
+                If Google login fails, open this page directly in Safari or Chrome — not from a link inside another app.
+              </p>
+
               <div className="mt-5 flex items-center gap-3">
                 <div className="h-px flex-1 bg-white/[0.06]" />
                 <span className="font-mono text-[10px] uppercase tracking-wider text-ss-muted">or</span>
