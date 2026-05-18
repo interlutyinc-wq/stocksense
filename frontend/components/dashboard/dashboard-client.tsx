@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import type { AnalysisResult, Recommendation } from "@/app/api/agent/analyze/route";
 
 type Supplier = {
   id: string;
@@ -19,26 +20,59 @@ type Props = {
   suppliers: Supplier[];
 };
 
+const STATUS_STYLES: Record<Recommendation["status"], string> = {
+  critical: "border-ss-accent/40 bg-ss-accent/10 text-ss-accent",
+  low: "border-yellow-500/40 bg-yellow-500/10 text-yellow-400",
+  ok: "border-ss-green/30 bg-ss-green/10 text-ss-green",
+};
+
+const STATUS_LABELS: Record<Recommendation["status"], string> = {
+  critical: "Critical",
+  low: "Low stock",
+  ok: "OK",
+};
+
 export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
   const [analyzing, setAnalyzing] = useState(false);
-  const [analyzed, setAnalyzed] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   async function signOut() {
     await supabase.auth.signOut();
     router.push("/onboarding");
   }
 
-  function handleAnalyze() {
+  async function handleAnalyze() {
     setAnalyzing(true);
-    // Placeholder — real agent call goes here
-    setTimeout(() => {
+    setAnalysisError(null);
+
+    try {
+      const res = await fetch("/api/agent/analyze", { method: "POST" });
+      const data = (await res.json()) as AnalysisResult & { error?: string };
+
+      if (!res.ok || data.error) {
+        setAnalysisError(data.error ?? "Analysis failed. Please try again.");
+        return;
+      }
+
+      setAnalysisResult(data);
+    } catch {
+      setAnalysisError("Network error. Please try again.");
+    } finally {
       setAnalyzing(false);
-      setAnalyzed(true);
-    }, 2000);
+    }
   }
+
+  const urgentRecs = analysisResult?.recommendations.filter(
+    (r) => r.status === "critical" || r.status === "low",
+  ) ?? [];
+
+  const okRecs = analysisResult?.recommendations.filter(
+    (r) => r.status === "ok",
+  ) ?? [];
 
   return (
     <div className="min-h-screen bg-ss-black">
@@ -55,9 +89,7 @@ export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
           {shopDomain ? (
             <div className="hidden items-center gap-2 sm:flex">
               <span className="h-1.5 w-1.5 rounded-full bg-ss-green" aria-hidden />
-              <span className="font-mono text-xs text-ss-cream/70">
-                {shopDomain}
-              </span>
+              <span className="font-mono text-xs text-ss-cream/70">{shopDomain}</span>
             </div>
           ) : (
             <span className="hidden font-mono text-xs text-ss-accent/80 sm:block">
@@ -81,13 +113,11 @@ export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
       </header>
 
       <main className="mx-auto max-w-5xl space-y-10 px-6 py-10 md:px-12 md:py-14">
-        {/* ── Benvenuto ── */}
+        {/* ── Hero ── */}
         <div className="relative overflow-hidden border border-white/[0.06] bg-ss-surface p-6 md:p-8">
           <div
             className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full opacity-20 blur-3xl"
-            style={{
-              background: "rgba(255,77,28,0.5)",
-            }}
+            style={{ background: "rgba(255,77,28,0.5)" }}
             aria-hidden
           />
           <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-ss-accent">
@@ -97,22 +127,20 @@ export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
             Your agent is ready.
           </h1>
           <p className="mt-2 font-mono text-sm leading-relaxed text-ss-cream/50">
-            {shopDomain
-              ? `Connected store: `
-              : "Connect your Shopify store to get started."}
-            {shopDomain && (
-              <strong className="text-ss-cream">{shopDomain}</strong>
+            {shopDomain ? (
+              <>
+                Connected store: <strong className="text-ss-cream">{shopDomain}</strong>
+              </>
+            ) : (
+              "Connect your Shopify store to get started."
             )}
           </p>
         </div>
 
-        {/* ── Fornitori ── */}
+        {/* ── Suppliers ── */}
         <section aria-labelledby="suppliers-heading">
           <div className="mb-4 flex items-center justify-between">
-            <h2
-              id="suppliers-heading"
-              className="font-sans text-base font-bold text-ss-cream"
-            >
+            <h2 id="suppliers-heading" className="font-sans text-base font-bold text-ss-cream">
               Your suppliers
             </h2>
             <Link
@@ -134,17 +162,10 @@ export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
               {suppliers.map((s) => (
                 <li
                   key={s.id}
-                  className="group border border-white/[0.06] bg-ss-surface p-4 transition hover:border-white/[0.12]"
+                  className="border border-white/[0.06] bg-ss-surface p-4 transition hover:border-white/[0.12]"
                 >
-                  {/* Nome */}
-                  <p className="font-sans text-sm font-bold text-ss-cream">
-                    {s.name}
-                  </p>
-                  {/* Email */}
-                  <p className="mt-1 font-mono text-[11px] text-ss-muted">
-                    {s.email}
-                  </p>
-                  {/* SKUs */}
+                  <p className="font-sans text-sm font-bold text-ss-cream">{s.name}</p>
+                  <p className="mt-1 font-mono text-[11px] text-ss-muted">{s.email}</p>
                   {s.skus.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       {s.skus.slice(0, 6).map((sku) => (
@@ -168,27 +189,24 @@ export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
           )}
         </section>
 
-        {/* ── Analizza inventario ── */}
+        {/* ── Analyze ── */}
         <section aria-labelledby="analyze-heading">
-          <h2
-            id="analyze-heading"
-            className="mb-4 font-sans text-base font-bold text-ss-cream"
-          >
+          <h2 id="analyze-heading" className="mb-4 font-sans text-base font-bold text-ss-cream">
             Inventory analysis
           </h2>
 
           <div className="border border-white/[0.06] bg-ss-surface p-6 md:p-8">
             <p className="font-mono text-sm leading-relaxed text-ss-cream/55">
-              The agent analyzes your sales velocity, supplier lead times, and
-              seasonal trends to generate order recommendations with full
+              The agent fetches your live Shopify inventory, reasons through stock levels
+              and supplier lead times, and generates reorder recommendations with full
               plain-language explanations.
             </p>
 
             <div className="mt-6 flex flex-wrap items-center gap-4">
               <button
                 type="button"
-                onClick={handleAnalyze}
-                disabled={analyzing}
+                onClick={() => void handleAnalyze()}
+                disabled={analyzing || !shopDomain}
                 className="inline-flex items-center gap-2 bg-ss-accent px-8 py-3 font-sans text-sm font-bold text-white transition hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#00e5a0] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {analyzing ? (
@@ -196,6 +214,8 @@ export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
                     <SpinnerIcon />
                     Agent processing…
                   </>
+                ) : analysisResult ? (
+                  "Re-analyze inventory →"
                 ) : (
                   "Analyze inventory →"
                 )}
@@ -211,24 +231,39 @@ export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
             {analyzing && (
               <div className="mt-6 border border-ss-accent/20 bg-ss-accent/5 px-4 py-3">
                 <p className="font-mono text-xs text-ss-accent/80">
-                  ⟳ Agent processing — reasoning through your data…
+                  ⟳ Fetching Shopify inventory · Reasoning through data · Generating recommendations…
                 </p>
+              </div>
+            )}
+
+            {analysisError && (
+              <div
+                role="alert"
+                className="mt-6 border border-ss-accent/30 bg-ss-accent/5 px-4 py-3"
+              >
+                <p className="font-mono text-xs text-ss-accent">{analysisError}</p>
               </div>
             )}
           </div>
         </section>
 
-        {/* ── Raccomandazioni ── */}
+        {/* ── Recommendations ── */}
         <section aria-labelledby="recs-heading">
-          <h2
-            id="recs-heading"
-            className="mb-4 font-sans text-base font-bold text-ss-cream"
-          >
-            Recommendations
-          </h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 id="recs-heading" className="font-sans text-base font-bold text-ss-cream">
+              Recommendations
+            </h2>
+            {analysisResult && (
+              <span className="font-mono text-[11px] text-ss-muted">
+                {analysisResult.total_skus_analyzed} SKUs analyzed ·{" "}
+                {analysisResult.items_needing_attention} need attention
+              </span>
+            )}
+          </div>
 
           <div className="border border-white/[0.06] bg-ss-surface">
-            {!analyzed ? (
+            {!analysisResult ? (
+              /* Empty state */
               <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
                 <div className="mb-4 flex h-12 w-12 items-center justify-center border border-white/[0.06] bg-ss-black/60">
                   <AgentIcon />
@@ -237,41 +272,66 @@ export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
                   No analysis run yet
                 </p>
                 <p className="mt-2 max-w-sm font-mono text-xs leading-relaxed text-ss-muted">
-                  Click{" "}
-                  <strong className="text-ss-cream">Analyze inventory</strong>{" "}
-                  to get started — the agent will reason through your data and
-                  generate order recommendations with full explanations.
+                  Click <strong className="text-ss-cream">Analyze inventory</strong> to get
+                  started — the agent will reason through your live Shopify data and generate
+                  order recommendations with full explanations.
                 </p>
               </div>
             ) : (
-              /* Placeholder risultato — da sostituire con vera risposta agent */
-              <div className="divide-y divide-white/[0.04]">
-                <div className="px-6 py-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="font-mono text-[10px] uppercase tracking-wider text-ss-accent">
-                        → Analysis complete
-                      </p>
-                      <p className="mt-1 font-sans text-sm font-bold text-ss-cream">
-                        No urgent recommendations detected
-                      </p>
-                      <p className="mt-1 font-mono text-xs text-ss-muted">
-                        AI model integration in progress — real recommendations
-                        will appear here.
-                      </p>
-                    </div>
-                    <span className="shrink-0 border border-ss-green/30 bg-ss-green/10 px-2.5 py-1 font-mono text-[10px] text-ss-green">
-                      OK
-                    </span>
-                  </div>
+              /* Real results */
+              <div>
+                {/* Summary banner */}
+                <div className="border-b border-white/[0.06] px-6 py-4">
+                  <p className="font-mono text-[10px] uppercase tracking-wider text-ss-accent">
+                    → Analysis complete ·{" "}
+                    {new Date(analysisResult.analyzed_at).toLocaleTimeString()}
+                  </p>
+                  <p className="mt-1 font-mono text-sm leading-relaxed text-ss-cream/80">
+                    {analysisResult.summary}
+                  </p>
                 </div>
+
+                {/* Urgent items */}
+                {urgentRecs.length > 0 && (
+                  <div>
+                    <p className="border-b border-white/[0.04] px-6 py-2 font-mono text-[10px] uppercase tracking-wider text-ss-muted">
+                      Action required
+                    </p>
+                    <ul className="divide-y divide-white/[0.04]">
+                      {urgentRecs.map((rec, i) => (
+                        <RecommendationRow key={i} rec={rec} />
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* OK items */}
+                {okRecs.length > 0 && (
+                  <div>
+                    <p className="border-b border-white/[0.04] border-t border-t-white/[0.06] px-6 py-2 font-mono text-[10px] uppercase tracking-wider text-ss-muted">
+                      Healthy stock
+                    </p>
+                    <ul className="divide-y divide-white/[0.04]">
+                      {okRecs.map((rec, i) => (
+                        <RecommendationRow key={i} rec={rec} />
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {analysisResult.recommendations.length === 0 && (
+                  <div className="px-6 py-8 text-center">
+                    <p className="font-mono text-sm text-ss-muted">
+                      No products found to analyze. Make sure your Shopify store has active products.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </section>
       </main>
 
-      {/* ── Footer ── */}
       <footer className="mt-4 border-t border-white/[0.04] px-6 py-6 text-center md:px-12">
         <p className="font-mono text-[10px] text-ss-muted">
           StockSense · Reasons · Decides · Explains · Acts
@@ -281,43 +341,96 @@ export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
   );
 }
 
-/* ── Micro-componenti icone ── */
+/* ── Recommendation row ─────────────────────────────────────────────────────── */
+
+function RecommendationRow({ rec }: { rec: Recommendation }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <li className="px-6 py-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`shrink-0 border px-2 py-0.5 font-mono text-[10px] ${STATUS_STYLES[rec.status]}`}
+            >
+              {STATUS_LABELS[rec.status]}
+            </span>
+            <p className="font-sans text-sm font-bold text-ss-cream truncate">
+              {rec.product}
+            </p>
+            {rec.sku && (
+              <span className="font-mono text-[10px] text-ss-muted">{rec.sku}</span>
+            )}
+          </div>
+
+          <div className="mt-2 flex flex-wrap gap-4 font-mono text-[11px] text-ss-cream/60">
+            <span>
+              Stock:{" "}
+              <strong
+                className={
+                  rec.status === "critical" ? "text-ss-accent" : "text-ss-cream"
+                }
+              >
+                {rec.current_stock} units
+              </strong>
+            </span>
+            {rec.reorder_qty > 0 && (
+              <span>
+                Reorder: <strong className="text-ss-green">{rec.reorder_qty} units</strong>
+              </span>
+            )}
+            {rec.supplier && (
+              <span>
+                Supplier: <strong className="text-ss-cream">{rec.supplier}</strong>
+              </span>
+            )}
+          </div>
+
+          {/* Reasoning toggle */}
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="mt-2 font-mono text-[10px] text-ss-muted underline-offset-2 hover:text-ss-cream hover:underline"
+          >
+            {expanded ? "Hide reasoning ↑" : "Show reasoning ↓"}
+          </button>
+
+          {expanded && (
+            <p className="mt-2 font-mono text-xs leading-relaxed text-ss-cream/60 border-l-2 border-ss-accent/30 pl-3">
+              {rec.reasoning}
+            </p>
+          )}
+        </div>
+
+        {/* Quick action */}
+        {rec.supplier_email && rec.status !== "ok" && (
+          <a
+            href={`mailto:${rec.supplier_email}?subject=Reorder request – ${rec.sku ?? rec.product}&body=Hi ${rec.supplier},%0A%0APlease send a quote for ${rec.reorder_qty} units of ${rec.sku ?? rec.product}.%0A%0AThank you`}
+            className="shrink-0 border border-ss-green/30 bg-ss-green/10 px-3 py-1.5 font-mono text-[10px] text-ss-green transition hover:bg-ss-green/20"
+          >
+            Draft PO →
+          </a>
+        )}
+      </div>
+    </li>
+  );
+}
+
+/* ── Icons ──────────────────────────────────────────────────────────────────── */
 
 function SpinnerIcon() {
   return (
-    <svg
-      className="h-4 w-4 animate-spin"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden
-    >
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="3"
-      />
-      <path
-        className="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-      />
+    <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
     </svg>
   );
 }
 
 function AgentIcon() {
   return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 20 20"
-      fill="none"
-      aria-hidden
-      className="text-ss-muted"
-    >
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden className="text-ss-muted">
       <rect x="3" y="7" width="14" height="9" rx="1" stroke="currentColor" strokeWidth="1.2" />
       <path d="M7 7V5a3 3 0 016 0v2" stroke="currentColor" strokeWidth="1.2" />
       <circle cx="10" cy="12" r="1.5" fill="currentColor" />
