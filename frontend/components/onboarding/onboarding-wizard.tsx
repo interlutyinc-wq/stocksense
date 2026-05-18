@@ -239,7 +239,7 @@ export function OnboardingWizard() {
         // creates nothing. Surface a clear message instead of silently failing.
         if (!data.user) {
           setAuthError(
-            "Registrazione non completata. Se hai già un account, usa Log in.",
+            "Registration failed. If you already have an account, use Log in.",
           );
           return;
         }
@@ -269,7 +269,7 @@ export function OnboardingWizard() {
       // Network failures or unexpected SDK throws — ensure the button
       // is always re-enabled and the user gets a readable message.
       setAuthError(
-        err instanceof Error ? err.message : "Errore di connessione. Riprova.",
+        err instanceof Error ? err.message : "Connection error. Please try again.",
       );
     } finally {
       setAuthBusy(false);
@@ -452,12 +452,12 @@ export function OnboardingWizard() {
                 className="mt-6 flex w-full items-center justify-center gap-3 border border-white/[0.1] bg-white px-4 py-3 font-sans text-sm font-bold text-gray-800 transition hover:bg-gray-50 disabled:opacity-50"
               >
                 <GoogleIcon />
-                {googleBusy ? "Reindirizzamento…" : "Continua con Google"}
+                {googleBusy ? "Redirecting…" : "Continue with Google"}
               </button>
 
               <div className="mt-5 flex items-center gap-3">
                 <div className="h-px flex-1 bg-white/[0.06]" />
-                <span className="font-mono text-[10px] uppercase tracking-wider text-ss-muted">oppure</span>
+                <span className="font-mono text-[10px] uppercase tracking-wider text-ss-muted">or</span>
                 <div className="h-px flex-1 bg-white/[0.06]" />
               </div>
 
@@ -531,7 +531,7 @@ export function OnboardingWizard() {
                           setResetError(null);
                           const trimmed = email.trim();
                           if (!trimmed) {
-                            setResetError("Inserisci prima la tua email.");
+                            setResetError("Please enter your email first.");
                             return;
                           }
                           setResetBusy(true);
@@ -548,7 +548,7 @@ export function OnboardingWizard() {
                         }}
                         className="font-mono text-[10px] text-ss-muted underline-offset-2 transition hover:text-ss-cream hover:underline disabled:opacity-50"
                       >
-                        {resetBusy ? "Invio…" : "Password dimenticata?"}
+                        {resetBusy ? "Sending…" : "Forgot password?"}
                       </button>
                     )}
                   </div>
@@ -571,7 +571,7 @@ export function OnboardingWizard() {
                     role="status"
                     className="border border-ss-green/40 bg-ss-green/10 px-4 py-3 font-mono text-xs text-ss-green"
                   >
-                    Controlla la tua email per il link di reset.
+                    Check your email for the reset link.
                   </div>
                 )}
                 {resetError && (

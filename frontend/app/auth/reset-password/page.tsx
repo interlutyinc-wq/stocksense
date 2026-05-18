@@ -35,7 +35,7 @@ function ResetPasswordForm() {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         if (error) {
           setLinkError(
-            "Il link non è valido o è scaduto. Richiedine uno nuovo.",
+            "The link is invalid or has expired. Please request a new one.",
           );
           setStage("error");
         } else {
@@ -56,7 +56,7 @@ function ResetPasswordForm() {
 
       // Neither a code nor an existing session — link is invalid / expired.
       setLinkError(
-        "Nessuna sessione trovata. Il link potrebbe essere scaduto.",
+        "No session found. The link may have expired.",
       );
       setStage("error");
     }
@@ -70,11 +70,11 @@ function ResetPasswordForm() {
     setFormError(null);
 
     if (password.length < 6) {
-      setFormError("La password deve essere di almeno 6 caratteri.");
+      setFormError("Password must be at least 6 characters.");
       return;
     }
     if (password !== confirm) {
-      setFormError("Le password non corrispondono.");
+      setFormError("Passwords don't match.");
       return;
     }
 
@@ -96,7 +96,7 @@ function ResetPasswordForm() {
     return (
       <div className="flex items-center justify-center border border-white/[0.06] bg-ss-surface py-14">
         <span className="font-mono text-sm text-ss-cream/40">
-          Verifica link in corso…
+          Verifying link…
         </span>
       </div>
     );
@@ -112,7 +112,7 @@ function ResetPasswordForm() {
           </div>
           <div>
             <p className="font-sans text-sm font-bold text-ss-cream">
-              Link non valido
+              Invalid link
             </p>
             <p className="mt-1 font-mono text-xs text-ss-muted">{linkError}</p>
           </div>
@@ -120,7 +120,7 @@ function ResetPasswordForm() {
             href="/onboarding"
             className="mt-2 border border-white/[0.08] px-5 py-2.5 font-mono text-xs text-ss-cream transition hover:border-ss-accent/40 hover:text-ss-accent"
           >
-            Richiedi un nuovo link →
+            Request a new link →
           </Link>
         </div>
       </div>
@@ -137,10 +137,10 @@ function ResetPasswordForm() {
           </div>
           <div>
             <p className="font-sans text-sm font-bold text-ss-cream">
-              Password aggiornata!
+              Password updated!
             </p>
             <p className="mt-1 font-mono text-xs text-ss-muted">
-              Redirect alla dashboard in corso…
+              Redirecting to dashboard…
             </p>
           </div>
         </div>
@@ -157,7 +157,7 @@ function ResetPasswordForm() {
             htmlFor="new-password"
             className="font-mono text-[10px] uppercase tracking-wider text-ss-muted"
           >
-            Nuova password
+            New password
           </label>
           <input
             id="new-password"
@@ -179,7 +179,7 @@ function ResetPasswordForm() {
             htmlFor="confirm-password"
             className="font-mono text-[10px] uppercase tracking-wider text-ss-muted"
           >
-            Conferma password
+            Confirm password
           </label>
           <input
             id="confirm-password"
@@ -201,8 +201,8 @@ function ResetPasswordForm() {
               }`}
             >
               {password === confirm
-                ? "✓ Le password corrispondono"
-                : "Le password non corrispondono"}
+                ? "✓ Passwords match"
+                : "Passwords don't match"}
             </p>
           )}
         </div>
@@ -218,7 +218,7 @@ function ResetPasswordForm() {
           disabled={busy}
           className="w-full bg-ss-accent py-3 font-sans text-sm font-bold text-white transition hover:-translate-y-0.5 hover:shadow-[2px_2px_0_#00e5a0] disabled:opacity-50"
         >
-          {busy ? "Aggiornamento…" : "Aggiorna password →"}
+          {busy ? "Updating…" : "Update password →"}
         </button>
       </form>
     </div>
@@ -250,15 +250,15 @@ export default function ResetPasswordPage() {
       <main className="flex flex-1 items-center justify-center px-6 py-16">
         <div className="w-full max-w-md">
           <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.25em] text-ss-accent">
-            Nuova password
+            New password
           </p>
           <h1 className="font-sans text-2xl font-extrabold tracking-tight text-ss-cream md:text-3xl">
-            Scegli una password
+            Choose a secure
             <br />
-            <span className="text-ss-accent">sicura.</span>
+            <span className="text-ss-accent">password.</span>
           </h1>
           <p className="mt-3 font-mono text-sm leading-relaxed text-ss-cream/50">
-            Inserisci la nuova password per il tuo account StockSense.
+            Enter your new password for your StockSense account.
           </p>
 
           <div className="mt-8">
@@ -266,7 +266,7 @@ export default function ResetPasswordPage() {
               fallback={
                 <div className="flex items-center justify-center border border-white/[0.06] bg-ss-surface py-14">
                   <span className="font-mono text-sm text-ss-cream/40">
-                    Caricamento…
+                    Loading…
                   </span>
                 </div>
               }
@@ -276,12 +276,12 @@ export default function ResetPasswordPage() {
           </div>
 
           <p className="mt-6 text-center font-mono text-[11px] text-ss-muted">
-            Ricordi la password?{" "}
+            Remember your password?{" "}
             <Link
               href="/onboarding"
               className="text-ss-cream underline-offset-2 hover:underline"
             >
-              Torna al login
+              Back to login
             </Link>
           </p>
         </div>

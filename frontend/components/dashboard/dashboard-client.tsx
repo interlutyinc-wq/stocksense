@@ -95,12 +95,12 @@ export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
             Dashboard
           </p>
           <h1 className="mt-2 font-sans text-2xl font-extrabold tracking-tight text-ss-cream md:text-3xl">
-            Il tuo agente è pronto.
+            Your agent is ready.
           </h1>
           <p className="mt-2 font-mono text-sm leading-relaxed text-ss-cream/50">
             {shopDomain
-              ? `Store connesso: `
-              : "Connetti il tuo store Shopify per iniziare."}
+              ? `Connected store: `
+              : "Connect your Shopify store to get started."}
             {shopDomain && (
               <strong className="text-ss-cream">{shopDomain}</strong>
             )}
@@ -114,20 +114,20 @@ export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
               id="suppliers-heading"
               className="font-sans text-base font-bold text-ss-cream"
             >
-              I tuoi fornitori
+              Your suppliers
             </h2>
             <Link
               href="/onboarding?step=3"
               className="font-mono text-[11px] text-ss-muted underline-offset-4 transition hover:text-ss-green hover:underline"
             >
-              + Aggiungi fornitore
+              + Add supplier
             </Link>
           </div>
 
           {suppliers.length === 0 ? (
             <div className="border border-white/[0.06] bg-ss-surface px-6 py-8 text-center">
               <p className="font-mono text-sm text-ss-muted">
-                Nessun fornitore ancora — aggiungine uno dall&apos;onboarding.
+                No suppliers yet — add one from onboarding.
               </p>
             </div>
           ) : (
@@ -158,7 +158,7 @@ export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
                       ))}
                       {s.skus.length > 6 && (
                         <span className="px-2 py-0.5 font-mono text-[10px] text-ss-muted">
-                          +{s.skus.length - 6} altri
+                          +{s.skus.length - 6} more
                         </span>
                       )}
                     </div>
@@ -175,14 +175,14 @@ export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
             id="analyze-heading"
             className="mb-4 font-sans text-base font-bold text-ss-cream"
           >
-            Analisi inventario
+            Inventory analysis
           </h2>
 
           <div className="border border-white/[0.06] bg-ss-surface p-6 md:p-8">
             <p className="font-mono text-sm leading-relaxed text-ss-cream/55">
-              L&apos;agente esamina la tua velocità di vendita, i lead time dei
-              fornitori e le tendenze stagionali per generare raccomandazioni
-              d&apos;ordine con spiegazione completa.
+              The agent analyzes your sales velocity, supplier lead times, and
+              seasonal trends to generate order recommendations with full
+              plain-language explanations.
             </p>
 
             <div className="mt-6 flex flex-wrap items-center gap-4">
@@ -195,16 +195,16 @@ export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
                 {analyzing ? (
                   <>
                     <SpinnerIcon />
-                    Agent in elaborazione…
+                    Agent processing…
                   </>
                 ) : (
-                  "Analizza inventario →"
+                  "Analyze inventory →"
                 )}
               </button>
 
               {!shopDomain && (
                 <p className="font-mono text-[11px] text-ss-accent/80">
-                  Connetti Shopify prima di analizzare.
+                  Connect Shopify before running an analysis.
                 </p>
               )}
             </div>
@@ -212,7 +212,7 @@ export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
             {analyzing && (
               <div className="mt-6 border border-ss-accent/20 bg-ss-accent/5 px-4 py-3">
                 <p className="font-mono text-xs text-ss-accent/80">
-                  ⟳ Agent in elaborazione — ragionamento sui dati in corso…
+                  ⟳ Agent processing — reasoning through your data…
                 </p>
               </div>
             )}
@@ -225,7 +225,7 @@ export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
             id="recs-heading"
             className="mb-4 font-sans text-base font-bold text-ss-cream"
           >
-            Raccomandazioni
+            Recommendations
           </h2>
 
           <div className="border border-white/[0.06] bg-ss-surface">
@@ -235,14 +235,13 @@ export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
                   <AgentIcon />
                 </div>
                 <p className="font-sans text-sm font-bold text-ss-cream">
-                  Nessuna analisi ancora eseguita
+                  No analysis run yet
                 </p>
                 <p className="mt-2 max-w-sm font-mono text-xs leading-relaxed text-ss-muted">
-                  Clicca{" "}
-                  <strong className="text-ss-cream">Analizza inventario</strong>{" "}
-                  per iniziare — l&apos;agente ragionerà sui tuoi dati e
-                  genererà raccomandazioni d&apos;ordine con spiegazione
-                  completa.
+                  Click{" "}
+                  <strong className="text-ss-cream">Analyze inventory</strong>{" "}
+                  to get started — the agent will reason through your data and
+                  generate order recommendations with full explanations.
                 </p>
               </div>
             ) : (
@@ -252,14 +251,14 @@ export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="font-mono text-[10px] uppercase tracking-wider text-ss-accent">
-                        → Analisi completata
+                        → Analysis complete
                       </p>
                       <p className="mt-1 font-sans text-sm font-bold text-ss-cream">
-                        Nessuna raccomandazione urgente rilevata
+                        No urgent recommendations detected
                       </p>
                       <p className="mt-1 font-mono text-xs text-ss-muted">
-                        Il modello AI è in fase di integrazione — le
-                        raccomandazioni reali appariranno qui.
+                        AI model integration in progress — real recommendations
+                        will appear here.
                       </p>
                     </div>
                     <span className="shrink-0 border border-ss-green/30 bg-ss-green/10 px-2.5 py-1 font-mono text-[10px] text-ss-green">
