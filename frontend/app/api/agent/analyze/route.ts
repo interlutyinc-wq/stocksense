@@ -34,10 +34,14 @@ export interface Recommendation {
   sku: string;
   product: string;
   current_stock: number;
+  daily_velocity: number;
+  days_remaining: number;
   status: "critical" | "low" | "ok";
+  urgency: "critical" | "high" | "medium" | "low";
   supplier: string | null;
   supplier_email: string | null;
   reorder_qty: number;
+  estimated_cost: number | null;
   reasoning: string;
 }
 
@@ -95,10 +99,14 @@ Return this exact JSON:
       "sku": "SKU",
       "product": "Product name",
       "current_stock": 0,
+      "daily_velocity": 0,
+      "days_remaining": 0,
       "status": "critical",
+      "urgency": "critical",
       "supplier": "Supplier name or null",
       "supplier_email": "email or null",
       "reorder_qty": 0,
+      "estimated_cost": null,
       "reasoning": "Action to take: pause listing / contact supplier / scale marketing"
     }
   ],
@@ -137,10 +145,14 @@ Return this exact JSON:
       "sku": "SKU",
       "product": "Product name",
       "current_stock": 0,
+      "daily_velocity": 0,
+      "days_remaining": 0,
       "status": "critical",
+      "urgency": "critical",
       "supplier": "Supplier name or null",
       "supplier_email": "email or null",
       "reorder_qty": 0,
+      "estimated_cost": null,
       "reasoning": "Plain-language action recommendation"
     }
   ],
@@ -155,6 +167,10 @@ Return this exact JSON:
     system: `${base}
 This merchant holds PHYSICAL INVENTORY and reorders from suppliers.
 Focus on stock levels, reorder points, and supplier lead times.
+Estimate daily_velocity from current stock context (if stock is very low relative to product type, assume higher velocity).
+days_remaining = current_stock / daily_velocity (round to integer, min 0).
+urgency: "critical" = days_remaining ≤ 3, "high" = 4–7 days, "medium" = 8–14 days, "low" = 15+ days.
+estimated_cost = reorder_qty × price if price is known, else null.
 Recommend specific reorder quantities sufficient for ~60 days of demand.`,
     user: `Analyze the inventory below for "${shopDomain}".
 
@@ -169,7 +185,7 @@ Rules:
 - status "low" = stock 6–20 units
 - status "ok" = stock > 20 units
 - Match each SKU to the supplier whose skus[] array contains that SKU; if no match, supplier is null
-- reorder_qty should cover ~60 days of estimated demand
+- reorder_qty should cover ~60 days of estimated demand at the estimated daily velocity
 
 Return this exact JSON:
 {
@@ -179,11 +195,15 @@ Return this exact JSON:
       "sku": "SKU",
       "product": "Product name",
       "current_stock": 0,
+      "daily_velocity": 0.5,
+      "days_remaining": 10,
       "status": "critical",
+      "urgency": "critical",
       "supplier": "Supplier name or null",
       "supplier_email": "email or null",
       "reorder_qty": 100,
-      "reasoning": "Plain-language explanation"
+      "estimated_cost": 450.00,
+      "reasoning": "Plain-language explanation covering velocity, days remaining, and why this quantity"
     }
   ],
   "total_skus_analyzed": ${inventoryItems.length},
@@ -305,7 +325,7 @@ export async function POST() {
   let analysisText = "";
   try {
     const message = await anthropic.messages.create({
-      model: "claude-haiku-4-5",
+      model: "claude-sonnet-4-6",
       max_tokens: 4096,
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],

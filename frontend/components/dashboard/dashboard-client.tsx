@@ -422,18 +422,28 @@ function RecommendationRow({ rec }: { rec: Recommendation }) {
           <div className="mt-2 flex flex-wrap gap-4 font-mono text-[11px] text-ss-cream/60">
             <span>
               Stock:{" "}
-              <strong
-                className={
-                  rec.status === "critical" ? "text-ss-accent" : "text-ss-cream"
-                }
-              >
+              <strong className={rec.status === "critical" ? "text-ss-accent" : "text-ss-cream"}>
                 {rec.current_stock} units
               </strong>
             </span>
+            {rec.daily_velocity > 0 && (
+              <span>Velocity: <strong className="text-ss-cream">{rec.daily_velocity}/day</strong></span>
+            )}
+            {rec.days_remaining >= 0 && rec.daily_velocity > 0 && (
+              <span>
+                Runway:{" "}
+                <strong className={rec.days_remaining <= 7 ? "text-ss-accent" : "text-ss-cream"}>
+                  {rec.days_remaining}d
+                </strong>
+              </span>
+            )}
             {rec.reorder_qty > 0 && (
               <span>
                 Reorder: <strong className="text-ss-green">{rec.reorder_qty} units</strong>
               </span>
+            )}
+            {rec.estimated_cost != null && rec.estimated_cost > 0 && (
+              <span>Est. cost: <strong className="text-ss-cream">${rec.estimated_cost.toFixed(0)}</strong></span>
             )}
             {rec.supplier && (
               <span>
