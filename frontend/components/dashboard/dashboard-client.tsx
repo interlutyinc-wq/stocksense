@@ -14,10 +14,19 @@ type Supplier = {
   created_at: string;
 };
 
+type BusinessModel = "inventory" | "dropshipping" | "hybrid";
+
+const MODEL_OPTIONS: { value: BusinessModel; label: string; desc: string }[] = [
+  { value: "inventory",    label: "Own inventory",  desc: "I stock products and reorder from suppliers" },
+  { value: "dropshipping", label: "Dropshipping",   desc: "My supplier fulfills orders directly" },
+  { value: "hybrid",       label: "Hybrid",         desc: "Mix of own stock and dropshipping" },
+];
+
 type Props = {
   userEmail: string;
   shopDomain: string | null;
   suppliers: Supplier[];
+  businessModel: BusinessModel;
 };
 
 const STATUS_STYLES: Record<Recommendation["status"], string> = {
@@ -32,17 +41,27 @@ const STATUS_LABELS: Record<Recommendation["status"], string> = {
   ok: "OK",
 };
 
-export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
+export function DashboardClient({ userEmail, shopDomain, suppliers, businessModel: initialModel }: Props) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [model, setModel] = useState<BusinessModel>(initialModel);
+  const [savingModel, setSavingModel] = useState(false);
 
   async function signOut() {
     await supabase.auth.signOut();
     router.push("/onboarding");
+  }
+
+  async function saveModel(next: BusinessModel) {
+    setSavingModel(true);
+    setModel(next);
+    await supabase.from("profiles").update({ business_model: next }).eq("id", (await supabase.auth.getUser()).data.user?.id ?? "");
+    setSavingModel(false);
+    setAnalysisResult(null); // clear old results when model changes
   }
 
   async function handleAnalyze() {
@@ -187,6 +206,42 @@ export function DashboardClient({ userEmail, shopDomain, suppliers }: Props) {
               ))}
             </ul>
           )}
+        </section>
+
+        {/* ── Business model selector ── */}
+        <section aria-labelledby="model-heading">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 id="model-heading" className="font-sans text-base font-bold text-ss-cream">
+              Business model
+            </h2>
+            {savingModel && (
+              <span className="font-mono text-[10px] text-ss-muted">Saving…</span>
+            )}
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {MODEL_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => void saveModel(opt.value)}
+                className={`border p-4 text-left transition ${
+                  model === opt.value
+                    ? "border-ss-accent/50 bg-ss-accent/10"
+                    : "border-white/[0.06] bg-ss-surface hover:border-ss-accent/25"
+                }`}
+              >
+                <p className="font-sans text-sm font-bold text-ss-cream">{opt.label}</p>
+                <p className="mt-1 font-mono text-[11px] leading-relaxed text-ss-muted">
+                  {opt.desc}
+                </p>
+                {model === opt.value && (
+                  <span className="mt-2 inline-block font-mono text-[10px] text-ss-accent">
+                    ✓ Active
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </section>
 
         {/* ── Analyze ── */}

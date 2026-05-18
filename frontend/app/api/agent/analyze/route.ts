@@ -52,6 +52,146 @@ export interface AnalysisResult {
 
 // ── Route handler ──────────────────────────────────────────────────────────────
 
+type BusinessModel = "inventory" | "dropshipping" | "hybrid";
+
+function buildPrompts(
+  model: BusinessModel,
+  shopDomain: string,
+  inventoryItems: object[],
+  supplierList: object[],
+): { system: string; user: string } {
+  const base = `You are StockSense, an AI-native supply chain agent for e-commerce merchants.
+Always explain your reasoning in plain language. Be specific and actionable.
+Return ONLY valid JSON — no markdown, no code fences, no preamble.`;
+
+  if (model === "dropshipping") {
+    return {
+      system: `${base}
+This merchant uses DROPSHIPPING — they never hold physical stock. Their supplier fulfills orders directly.
+Negative stock = overselling (orders placed beyond available supplier stock).
+Focus on: sales velocity, best sellers, fulfillment risk, products to pause or scale.
+Do NOT recommend traditional "reorder quantities" — instead recommend actions like "pause listings", "increase marketing", "verify supplier availability".`,
+      user: `Analyze the dropshipping catalog below for "${shopDomain}".
+
+PRODUCTS (${inventoryItems.length} SKUs):
+${JSON.stringify(inventoryItems, null, 2)}
+
+SUPPLIERS (${supplierList.length} registered):
+${JSON.stringify(supplierList, null, 2)}
+
+Rules:
+- status "critical" = stock ≤ 0 (risk of fulfillment failure — supplier may be out of stock)
+- status "low" = stock 1–10 (monitor closely)
+- status "ok" = stock > 10
+- Negative stock values mean the merchant is overselling — flag as critical
+- reorder_qty field = 0 for dropshipping (supplier fulfills on demand)
+- Use reasoning to explain whether to pause the listing, contact the supplier, or scale marketing
+
+Return this exact JSON:
+{
+  "summary": "Overview of dropshipping catalog health and fulfillment risks",
+  "recommendations": [
+    {
+      "sku": "SKU",
+      "product": "Product name",
+      "current_stock": 0,
+      "status": "critical",
+      "supplier": "Supplier name or null",
+      "supplier_email": "email or null",
+      "reorder_qty": 0,
+      "reasoning": "Action to take: pause listing / contact supplier / scale marketing"
+    }
+  ],
+  "total_skus_analyzed": ${inventoryItems.length},
+  "items_needing_attention": 0
+}`,
+    };
+  }
+
+  if (model === "hybrid") {
+    return {
+      system: `${base}
+This merchant uses a HYBRID model — some products are held in own stock, others are dropshipped.
+Apply inventory reorder logic to own-stock products and fulfillment-risk logic to dropshipped ones.
+Distinguish based on whether the product has a matched supplier SKU.`,
+      user: `Analyze the hybrid inventory below for "${shopDomain}".
+
+PRODUCTS (${inventoryItems.length} SKUs):
+${JSON.stringify(inventoryItems, null, 2)}
+
+SUPPLIERS (${supplierList.length} registered):
+${JSON.stringify(supplierList, null, 2)}
+
+Rules:
+- If a SKU matches a supplier's SKU list → treat as OWN STOCK: recommend reorder quantities
+- If no supplier match → treat as DROPSHIPPING: focus on fulfillment risk
+- status "critical" = stock ≤ 5 or negative
+- status "low" = stock 6–20
+- status "ok" = stock > 20
+
+Return this exact JSON:
+{
+  "summary": "Overview combining stock reorder needs and dropshipping fulfillment risks",
+  "recommendations": [
+    {
+      "sku": "SKU",
+      "product": "Product name",
+      "current_stock": 0,
+      "status": "critical",
+      "supplier": "Supplier name or null",
+      "supplier_email": "email or null",
+      "reorder_qty": 0,
+      "reasoning": "Plain-language action recommendation"
+    }
+  ],
+  "total_skus_analyzed": ${inventoryItems.length},
+  "items_needing_attention": 0
+}`,
+    };
+  }
+
+  // Default: inventory
+  return {
+    system: `${base}
+This merchant holds PHYSICAL INVENTORY and reorders from suppliers.
+Focus on stock levels, reorder points, and supplier lead times.
+Recommend specific reorder quantities sufficient for ~60 days of demand.`,
+    user: `Analyze the inventory below for "${shopDomain}".
+
+INVENTORY (${inventoryItems.length} SKUs):
+${JSON.stringify(inventoryItems, null, 2)}
+
+SUPPLIERS (${supplierList.length} registered):
+${JSON.stringify(supplierList, null, 2)}
+
+Rules:
+- status "critical" = stock ≤ 5 units or out of stock
+- status "low" = stock 6–20 units
+- status "ok" = stock > 20 units
+- Match each SKU to the supplier whose skus[] array contains that SKU; if no match, supplier is null
+- reorder_qty should cover ~60 days of estimated demand
+
+Return this exact JSON:
+{
+  "summary": "Overview of inventory health and urgent reorder needs",
+  "recommendations": [
+    {
+      "sku": "SKU",
+      "product": "Product name",
+      "current_stock": 0,
+      "status": "critical",
+      "supplier": "Supplier name or null",
+      "supplier_email": "email or null",
+      "reorder_qty": 100,
+      "reasoning": "Plain-language explanation"
+    }
+  ],
+  "total_skus_analyzed": ${inventoryItems.length},
+  "items_needing_attention": 0
+}`,
+  };
+}
+
 export async function POST() {
   // 1. Authenticate user
   const supabase = await createClient();
@@ -63,7 +203,17 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // 2. Fetch Shopify connection
+  // 2. Fetch business model from profile
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("business_model")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const businessModel: BusinessModel =
+    (profile?.business_model as BusinessModel) ?? "inventory";
+
+  // 3. Fetch Shopify connection
   const { data: shopifyConn } = await supabase
     .from("shopify_connections")
     .select("shop_domain, access_token")
@@ -78,13 +228,13 @@ export async function POST() {
     );
   }
 
-  // 3. Fetch suppliers
+  // 4. Fetch suppliers
   const { data: suppliers } = await supabase
     .from("suppliers")
     .select("name, email, skus")
     .order("created_at", { ascending: false });
 
-  // 4. Fetch Shopify inventory via Admin API
+  // 5. Fetch Shopify inventory via Admin API
   let shopifyProducts: ShopifyProduct[] = [];
   try {
     const shopifyRes = await fetch(
@@ -116,7 +266,7 @@ export async function POST() {
     );
   }
 
-  // 5. Build inventory summary for the prompt
+  // 6. Build inventory summary for the prompt
   const inventoryItems = shopifyProducts.flatMap((p) =>
     p.variants
       .filter((v) => v.inventory_management === "shopify" || v.inventory_quantity !== null)
@@ -135,8 +285,7 @@ export async function POST() {
     skus: s.skus,
   }));
 
-  // 6. Call Claude API
-  // Using claude-haiku-4-5 for cost efficiency on the MVP tier ($5 credits)
+  // 7. Call Claude API — prompt varies by business model
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
@@ -146,46 +295,12 @@ export async function POST() {
   }
 
   const anthropic = new Anthropic({ apiKey });
-
-  const systemPrompt = `You are StockSense, an AI-native supply chain agent for e-commerce merchants.
-Your job is to reason through inventory data and generate clear, actionable reorder recommendations.
-Always explain your reasoning in plain language. Be specific about quantities, urgency, and supplier.
-Return ONLY valid JSON — no markdown, no code fences, no preamble.`;
-
-  const userPrompt = `Analyze the inventory below for the Shopify store "${shopifyConn.shop_domain}".
-
-INVENTORY (${inventoryItems.length} SKUs):
-${JSON.stringify(inventoryItems, null, 2)}
-
-SUPPLIERS (${supplierList.length} registered):
-${JSON.stringify(supplierList, null, 2)}
-
-Rules for recommendations:
-- status "critical" = stock ≤ 5 units or out of stock
-- status "low" = stock 6–20 units
-- status "ok" = stock > 20 units (include in analysis but no urgent action needed)
-- Match each SKU to the supplier whose skus[] array contains that SKU; if no match, supplier is null
-- reorder_qty should be enough for ~60 days of estimated demand (use stock level as a proxy)
-- Focus recommendations on "critical" and "low" items first
-
-Respond with this exact JSON structure (no extras):
-{
-  "summary": "1-2 sentence overview of the overall inventory health",
-  "recommendations": [
-    {
-      "sku": "SKU code",
-      "product": "Product name",
-      "current_stock": 0,
-      "status": "critical",
-      "supplier": "Supplier name or null",
-      "supplier_email": "email or null",
-      "reorder_qty": 100,
-      "reasoning": "Plain-language explanation of why and how much to reorder"
-    }
-  ],
-  "total_skus_analyzed": ${inventoryItems.length},
-  "items_needing_attention": 0
-}`;
+  const { system: systemPrompt, user: userPrompt } = buildPrompts(
+    businessModel,
+    shopifyConn.shop_domain,
+    inventoryItems,
+    supplierList,
+  );
 
   let analysisText = "";
   try {

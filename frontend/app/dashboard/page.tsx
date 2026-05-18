@@ -15,24 +15,31 @@ export default async function DashboardPage() {
     redirect("/onboarding");
   }
 
-  const [{ data: shopifyData }, { data: suppliersData }] = await Promise.all([
-    supabase
-      .from("shopify_connections")
-      .select("shop_domain")
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-    supabase
-      .from("suppliers")
-      .select("id, name, email, skus, created_at")
-      .order("created_at", { ascending: false }),
-  ]);
+  const [{ data: shopifyData }, { data: suppliersData }, { data: profileData }] =
+    await Promise.all([
+      supabase
+        .from("shopify_connections")
+        .select("shop_domain")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("suppliers")
+        .select("id, name, email, skus, created_at")
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("profiles")
+        .select("business_model")
+        .eq("id", user.id)
+        .maybeSingle(),
+    ]);
 
   return (
     <DashboardClient
       userEmail={user.email ?? ""}
       shopDomain={shopifyData?.shop_domain ?? null}
       suppliers={suppliersData ?? []}
+      businessModel={(profileData?.business_model as "inventory" | "dropshipping" | "hybrid") ?? "inventory"}
     />
   );
 }
