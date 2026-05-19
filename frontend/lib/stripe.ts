@@ -1,8 +1,11 @@
 import Stripe from "stripe";
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2026-04-22.dahlia",
-});
+// Build-safe fallback — real key is set via Vercel env vars at runtime.
+// Same pattern used in lib/supabase/client.ts and server.ts.
+export const stripe = new Stripe(
+  process.env.STRIPE_SECRET_KEY ?? "sk_test_placeholder",
+  { apiVersion: "2026-04-22.dahlia" },
+);
 
 export const PLANS = {
   starter: {
