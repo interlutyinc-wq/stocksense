@@ -506,6 +506,40 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
 
 function RecommendationRow({ rec }: { rec: Recommendation }) {
   const [expanded, setExpanded] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+
+  async function handleSendPO() {
+    setSending(true);
+    setSendError(null);
+    try {
+      const res = await fetch("/api/po/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          supplierName: rec.supplier ?? "Unknown",
+          supplierEmail: rec.supplier_email,
+          productName: rec.product,
+          sku: rec.sku,
+          quantity: rec.reorder_qty,
+          estimatedCost: rec.estimated_cost,
+          urgency: rec.urgency,
+          reasoning: rec.reasoning,
+        }),
+      });
+      const data = (await res.json()) as { ok: boolean; error?: string };
+      if (data.ok) {
+        setSent(true);
+      } else {
+        setSendError(data.error ?? "Failed to send PO");
+      }
+    } catch {
+      setSendError("Network error. Try again.");
+    } finally {
+      setSending(false);
+    }
+  }
 
   return (
     <li className="px-6 py-4">
@@ -574,14 +608,27 @@ function RecommendationRow({ rec }: { rec: Recommendation }) {
           )}
         </div>
 
-        {/* Quick action */}
-        {rec.supplier_email && rec.status !== "ok" && (
-          <a
-            href={`mailto:${rec.supplier_email}?subject=Reorder request – ${rec.sku ?? rec.product}&body=Hi ${rec.supplier},%0A%0APlease send a quote for ${rec.reorder_qty} units of ${rec.sku ?? rec.product}.%0A%0AThank you`}
-            className="shrink-0 border border-ss-green/30 bg-ss-green/10 px-3 py-1.5 font-mono text-[10px] text-ss-green transition hover:bg-ss-green/20"
-          >
-            Draft PO →
-          </a>
+        {/* Send PO action */}
+        {rec.supplier_email && rec.status !== "ok" && rec.reorder_qty > 0 && (
+          <div className="shrink-0 flex flex-col items-end gap-1">
+            {sent ? (
+              <span className="border border-ss-green/30 bg-ss-green/10 px-3 py-1.5 font-mono text-[10px] text-ss-green">
+                ✓ PO sent
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void handleSendPO()}
+                disabled={sending}
+                className="border border-ss-green/30 bg-ss-green/10 px-3 py-1.5 font-mono text-[10px] text-ss-green transition hover:bg-ss-green/20 disabled:opacity-50"
+              >
+                {sending ? "Sending…" : "Approve & Send PO →"}
+              </button>
+            )}
+            {sendError && (
+              <p className="font-mono text-[9px] text-ss-accent max-w-[160px] text-right">{sendError}</p>
+            )}
+          </div>
         )}
       </div>
     </li>
