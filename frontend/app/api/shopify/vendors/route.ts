@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getLimits } from "@/lib/plans";
 import { NextResponse } from "next/server";
 
 interface ShopifyVariant {
@@ -37,6 +38,17 @@ export async function GET() {
 
   if (!conn) {
     return NextResponse.json({ error: "No Shopify store connected." }, { status: 400 });
+  }
+
+  // Plan gate
+  const { data: profile } = await supabase
+    .from("profiles").select("plan").eq("id", user.id).maybeSingle();
+  const limits = getLimits(profile?.plan ?? "free");
+  if (!limits.canAutoImport) {
+    return NextResponse.json(
+      { error: "Upgrade to Starter or higher to auto-import suppliers.", upgrade: true },
+      { status: 403 },
+    );
   }
 
   // Fetch all active products from Shopify

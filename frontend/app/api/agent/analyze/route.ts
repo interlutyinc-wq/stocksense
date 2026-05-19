@@ -229,7 +229,7 @@ export async function POST() {
   // 2. Fetch business model from profile
   const { data: profile } = await supabase
     .from("profiles")
-    .select("business_model, plan")
+    .select("business_model, plan, analyses_count_month, analyses_reset_at")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -238,21 +238,26 @@ export async function POST() {
 
   const limits = getLimits(profile?.plan ?? "free");
 
-  // Free plan: check monthly analysis limit
+  // Free plan: enforce monthly analysis limit
   if (limits.analysesPerMonth !== -1) {
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-    const { count } = await supabase
-      .from("purchase_orders")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .gte("created_at", startOfMonth.toISOString());
+    const now = new Date();
+    const resetAt = new Date(profile?.analyses_reset_at ?? now);
+    const sameMonth = resetAt.getMonth() === now.getMonth() &&
+                      resetAt.getFullYear() === now.getFullYear();
+    const count = sameMonth ? (profile?.analyses_count_month ?? 0) : 0;
 
-    // Use purchase_orders as proxy for analyses run this month
-    // Free gets 1 free analysis regardless of PO count
-    const analysisKey = `analysis_count_${user.id}_${startOfMonth.getMonth()}`;
-    void analysisKey; // tracked client-side for now
+    if (count >= limits.analysesPerMonth) {
+      return NextResponse.json(
+        { error: "Monthly analysis limit reached. Upgrade to run unlimited analyses.", upgrade: true },
+        { status: 403 },
+      );
+    }
+
+    // Increment counter
+    await supabase.from("profiles").update({
+      analyses_count_month: sameMonth ? count + 1 : 1,
+      analyses_reset_at: sameMonth ? profile?.analyses_reset_at : now.toISOString(),
+    }).eq("id", user.id);
   }
 
   // Free plan: enforce business model restriction
