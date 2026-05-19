@@ -137,9 +137,9 @@ export function MarketingLanding() {
           Stock<em>Sense</em>
         </Link>
         <div className="nav-pill">AI Agent · Not a Tool</div>
-        <button type="button" className="nav-cta" onClick={scrollToWaitlist}>
-          Early Access →
-        </button>
+        <a href="/onboarding" className="nav-cta">
+          Get started →
+        </a>
       </nav>
 
       <section className="hero">
@@ -164,9 +164,9 @@ export function MarketingLanding() {
         </p>
 
         <div className="hero-actions">
-          <button type="button" className="btn-main" onClick={scrollToWaitlist}>
-            Join the Waitlist →
-          </button>
+          <a href="/onboarding" className="btn-main">
+            Start for free →
+          </a>
           <button
             type="button"
             className="btn-ghost"
@@ -424,8 +424,8 @@ export function MarketingLanding() {
               <li>30-day demand forecast</li>
               <li>1 user</li>
             </ul>
-            <a href="#waitlist" className="plan-btn outline">
-              Get Early Access
+            <a href="/onboarding" className="plan-btn outline">
+              Get started →
             </a>
           </div>
 
@@ -444,11 +444,11 @@ export function MarketingLanding() {
               <li>Autonomous PO generation</li>
               <li>Supplier consolidation AI</li>
               <li>90-day AI forecast</li>
-              <li>Slack + email + SMS</li>
+              <li>Email alerts & PO delivery</li>
               <li>5 users</li>
             </ul>
-            <a href="#waitlist" className="plan-btn filled">
-              Get Early Access
+            <a href="/onboarding" className="plan-btn filled">
+              Get Agent →
             </a>
           </div>
 
@@ -471,8 +471,8 @@ export function MarketingLanding() {
               <li>SLA + dedicated support</li>
               <li>Unlimited users</li>
             </ul>
-            <a href="#waitlist" className="plan-btn outline">
-              Contact Us
+            <a href="mailto:interlutyinc@gmail.com?subject=StockSense Enterprise" className="plan-btn outline">
+              Contact us →
             </a>
           </div>
         </div>
@@ -489,7 +489,7 @@ export function MarketingLanding() {
           <span style={{ color: "var(--accent)" }}>delegating.</span>
         </h2>
         <p className="wl-sub reveal">
-          Join the waitlist. First 100 get 3 months free.
+          Live now. First 100 merchants get 3 months free.
         </p>
 
         {!done ? (
