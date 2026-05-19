@@ -536,9 +536,20 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
         {/* ── Purchase Order History ── */}
         {purchaseOrders.length > 0 && (
           <section aria-labelledby="po-history-heading">
-            <h2 id="po-history-heading" className="mb-4 font-sans text-base font-bold text-ss-cream">
-              Purchase order history
-            </h2>
+            <div className="mb-4 flex items-center justify-between">
+              <h2 id="po-history-heading" className="font-sans text-base font-bold text-ss-cream">
+                Purchase order history
+              </h2>
+              {(plan === "pro" || plan === "agency") && (
+                <a
+                  href="/api/export"
+                  download
+                  className="font-mono text-[11px] text-ss-muted underline-offset-2 transition hover:text-ss-green hover:underline"
+                >
+                  ↓ Export CSV
+                </a>
+              )}
+            </div>
             <div className="border border-white/[0.06] bg-ss-surface divide-y divide-white/[0.04]">
               {purchaseOrders.map((po) => (
                 <div key={po.id} className="flex items-center justify-between gap-4 px-5 py-3">
