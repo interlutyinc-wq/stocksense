@@ -88,6 +88,7 @@ export async function POST(request: Request) {
       estimatedCost,
       reasoning,
       poId: po.id,
+      plan: profile?.plan ?? "free",
     });
 
     // Mark as sent

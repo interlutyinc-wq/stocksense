@@ -29,7 +29,7 @@ export default async function DashboardPage() {
         .order("created_at", { ascending: false }),
       supabase
         .from("profiles")
-        .select("business_model, plan")
+        .select("business_model, plan, referral_code")
         .eq("id", user.id)
         .maybeSingle(),
       supabase
@@ -47,6 +47,7 @@ export default async function DashboardPage() {
       suppliers={suppliersData ?? []}
       businessModel={(profileData?.business_model as "inventory" | "dropshipping" | "hybrid") ?? "inventory"}
       plan={(profileData?.plan as "free" | "starter" | "pro" | "agency" | "enterprise") ?? "free"}
+      referralCode={profileData?.referral_code ?? null}
       purchaseOrders={purchaseOrdersData ?? []}
     />
   );

@@ -53,6 +53,7 @@ type Props = {
   suppliers: Supplier[];
   businessModel: BusinessModel;
   plan: Plan;
+  referralCode: string | null;
   purchaseOrders: PurchaseOrder[];
 };
 
@@ -68,7 +69,7 @@ const STATUS_LABELS: Record<Recommendation["status"], string> = {
   ok: "OK",
 };
 
-export function DashboardClient({ userEmail, shopDomain, suppliers, businessModel: initialModel, plan, purchaseOrders }: Props) {
+export function DashboardClient({ userEmail, shopDomain, suppliers, businessModel: initialModel, plan, referralCode, purchaseOrders }: Props) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
@@ -79,6 +80,8 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
   const [savingModel, setSavingModel] = useState(false);
   const [checkoutBusy, setCheckoutBusy] = useState<string | null>(null);
   const [portalBusy, setPortalBusy] = useState(false);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -118,6 +121,25 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
     await supabase.from("profiles").update({ business_model: next }).eq("id", (await supabase.auth.getUser()).data.user?.id ?? "");
     setSavingModel(false);
     setAnalysisResult(null); // clear old results when model changes
+  }
+
+  async function handleShareReport() {
+    if (!analysisResult) return;
+    setShareBusy(true);
+    try {
+      const res = await fetch("/api/report/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ result: analysisResult }),
+      });
+      const { url } = (await res.json()) as { url?: string };
+      if (url) {
+        setShareUrl(url);
+        await navigator.clipboard.writeText(url).catch(() => {});
+      }
+    } finally {
+      setShareBusy(false);
+    }
   }
 
   async function handleAnalyze() {
@@ -374,17 +396,35 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
 
         {/* ── Recommendations ── */}
         <section aria-labelledby="recs-heading">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex items-center justify-between gap-4">
             <h2 id="recs-heading" className="font-sans text-base font-bold text-ss-cream">
               Recommendations
             </h2>
-            {analysisResult && (
-              <span className="font-mono text-[11px] text-ss-muted">
-                {analysisResult.total_skus_analyzed} SKUs analyzed ·{" "}
-                {analysisResult.items_needing_attention} need attention
-              </span>
-            )}
+            <div className="flex items-center gap-3">
+              {analysisResult && (
+                <span className="font-mono text-[11px] text-ss-muted">
+                  {analysisResult.total_skus_analyzed} SKUs · {analysisResult.items_needing_attention} urgent
+                </span>
+              )}
+              {analysisResult && (
+                <button
+                  type="button"
+                  onClick={() => void handleShareReport()}
+                  disabled={shareBusy}
+                  className="border border-white/[0.08] px-3 py-1.5 font-mono text-[10px] text-ss-muted transition hover:border-ss-accent/40 hover:text-ss-cream disabled:opacity-50"
+                >
+                  {shareBusy ? "…" : shareUrl ? "✓ Link copied!" : "↗ Share report"}
+                </button>
+              )}
+            </div>
           </div>
+          {shareUrl && (
+            <div className="mb-4 border border-ss-green/30 bg-ss-green/5 px-4 py-2 flex items-center justify-between gap-4">
+              <p className="font-mono text-[10px] text-ss-green truncate">{shareUrl}</p>
+              <button type="button" onClick={() => void navigator.clipboard.writeText(shareUrl)}
+                className="shrink-0 font-mono text-[10px] text-ss-green hover:underline">Copy</button>
+            </div>
+          )}
 
           {analysisResult?.sku_limit_applied && (
             <div className="mb-4 border border-ss-accent/30 bg-ss-accent/5 px-4 py-3 flex items-center justify-between gap-4">
@@ -587,6 +627,42 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
                   </div>
                 </div>
               ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── Referral ── */}
+        {referralCode && (
+          <section aria-labelledby="referral-heading">
+            <div className="border border-white/[0.06] bg-ss-surface p-6">
+              <div className="flex items-start justify-between gap-6">
+                <div>
+                  <h2 id="referral-heading" className="font-sans text-base font-bold text-ss-cream">
+                    Give a friend 1 month free
+                  </h2>
+                  <p className="mt-1 font-mono text-[11px] leading-relaxed text-ss-muted">
+                    Share your referral link. When they upgrade, you both get 1 month free.
+                  </p>
+                  <div className="mt-3 flex items-center gap-2">
+                    <code className="border border-white/[0.06] bg-ss-black px-3 py-1.5 font-mono text-[11px] text-ss-green">
+                      {process.env.NEXT_PUBLIC_APP_URL ?? "https://stocksense-interlutyinc-wqs-projects.vercel.app"}/r/{referralCode}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => void navigator.clipboard.writeText(
+                        `${process.env.NEXT_PUBLIC_APP_URL ?? "https://stocksense-interlutyinc-wqs-projects.vercel.app"}/r/${referralCode}`
+                      )}
+                      className="border border-white/[0.08] px-3 py-1.5 font-mono text-[10px] text-ss-muted transition hover:border-ss-green/40 hover:text-ss-green"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+                <div className="hidden shrink-0 text-right sm:block">
+                  <p className="font-mono text-[10px] uppercase tracking-wider text-ss-muted">Your code</p>
+                  <p className="font-sans text-2xl font-extrabold text-ss-accent">{referralCode}</p>
+                </div>
+              </div>
             </div>
           </section>
         )}
