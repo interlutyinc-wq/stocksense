@@ -29,7 +29,7 @@ export default async function DashboardPage() {
         .order("created_at", { ascending: false }),
       supabase
         .from("profiles")
-        .select("business_model")
+        .select("business_model, plan")
         .eq("id", user.id)
         .maybeSingle(),
     ]);
@@ -40,6 +40,7 @@ export default async function DashboardPage() {
       shopDomain={shopifyData?.shop_domain ?? null}
       suppliers={suppliersData ?? []}
       businessModel={(profileData?.business_model as "inventory" | "dropshipping" | "hybrid") ?? "inventory"}
+      plan={(profileData?.plan as "free" | "starter" | "agent" | "enterprise") ?? "free"}
     />
   );
 }

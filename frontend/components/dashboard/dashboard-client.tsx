@@ -22,11 +22,21 @@ const MODEL_OPTIONS: { value: BusinessModel; label: string; desc: string }[] = [
   { value: "hybrid",       label: "Hybrid",         desc: "Mix of own stock and dropshipping" },
 ];
 
+type Plan = "free" | "starter" | "agent" | "enterprise";
+
+const PLAN_LABELS: Record<Plan, string> = {
+  free: "Free",
+  starter: "Starter · $49/mo",
+  agent: "Agent · $149/mo",
+  enterprise: "Enterprise",
+};
+
 type Props = {
   userEmail: string;
   shopDomain: string | null;
   suppliers: Supplier[];
   businessModel: BusinessModel;
+  plan: Plan;
 };
 
 const STATUS_STYLES: Record<Recommendation["status"], string> = {
@@ -41,7 +51,7 @@ const STATUS_LABELS: Record<Recommendation["status"], string> = {
   ok: "OK",
 };
 
-export function DashboardClient({ userEmail, shopDomain, suppliers, businessModel: initialModel }: Props) {
+export function DashboardClient({ userEmail, shopDomain, suppliers, businessModel: initialModel, plan }: Props) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
@@ -50,10 +60,39 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [model, setModel] = useState<BusinessModel>(initialModel);
   const [savingModel, setSavingModel] = useState(false);
+  const [checkoutBusy, setCheckoutBusy] = useState<string | null>(null);
+  const [portalBusy, setPortalBusy] = useState(false);
 
   async function signOut() {
     await supabase.auth.signOut();
     router.push("/onboarding");
+  }
+
+  async function handleCheckout(planKey: "starter" | "agent") {
+    setCheckoutBusy(planKey);
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: planKey }),
+      });
+      const { url, error } = (await res.json()) as { url?: string; error?: string };
+      if (error || !url) throw new Error(error ?? "Checkout failed");
+      window.location.href = url;
+    } catch {
+      setCheckoutBusy(null);
+    }
+  }
+
+  async function handlePortal() {
+    setPortalBusy(true);
+    try {
+      const res = await fetch("/api/stripe/portal", { method: "POST" });
+      const { url } = (await res.json()) as { url?: string };
+      if (url) window.location.href = url;
+    } finally {
+      setPortalBusy(false);
+    }
   }
 
   async function saveModel(next: BusinessModel) {
@@ -117,10 +156,24 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
           )}
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <span className="hidden font-mono text-[11px] text-ss-muted sm:block">
             {userEmail}
           </span>
+          {plan !== "free" ? (
+            <button
+              type="button"
+              onClick={() => void handlePortal()}
+              disabled={portalBusy}
+              className="hidden border border-ss-green/30 bg-ss-green/10 px-3 py-1.5 font-mono text-[10px] text-ss-green transition hover:bg-ss-green/20 sm:block disabled:opacity-50"
+            >
+              {portalBusy ? "…" : PLAN_LABELS[plan]}
+            </button>
+          ) : (
+            <span className="hidden border border-white/[0.08] px-3 py-1.5 font-mono text-[10px] text-ss-muted sm:block">
+              Free plan
+            </span>
+          )}
           <button
             type="button"
             onClick={() => void signOut()}
@@ -386,6 +439,59 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
           </div>
         </section>
       </main>
+
+        {/* ── Upgrade / Plan ── */}
+        {plan === "free" && (
+          <section aria-labelledby="upgrade-heading">
+            <h2 id="upgrade-heading" className="mb-4 font-sans text-base font-bold text-ss-cream">
+              Upgrade your plan
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {/* Starter */}
+              <div className="border border-white/[0.06] bg-ss-surface p-6">
+                <p className="font-sans text-lg font-extrabold text-ss-cream">Starter</p>
+                <p className="mt-1 font-sans text-3xl font-extrabold text-ss-accent">$49<span className="font-mono text-sm text-ss-muted">/mo</span></p>
+                <ul className="mt-4 space-y-1.5">
+                  {["Up to 50 SKUs", "Amazon + Shopify", "AI reasoning + explanations", "30-day forecast", "1 user"].map(f => (
+                    <li key={f} className="flex items-center gap-2 font-mono text-[11px] text-ss-cream/70">
+                      <span className="text-ss-green">✓</span> {f}
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  onClick={() => void handleCheckout("starter")}
+                  disabled={checkoutBusy !== null}
+                  className="mt-6 w-full border border-ss-accent/50 bg-ss-accent/10 py-3 font-sans text-sm font-bold text-ss-accent transition hover:bg-ss-accent/20 disabled:opacity-50"
+                >
+                  {checkoutBusy === "starter" ? "Redirecting…" : "Get Starter →"}
+                </button>
+              </div>
+
+              {/* Agent */}
+              <div className="relative border border-ss-accent/30 bg-ss-surface p-6">
+                <span className="absolute -top-3 left-4 bg-ss-accent px-3 py-0.5 font-mono text-[10px] font-bold text-white">MOST POPULAR</span>
+                <p className="font-sans text-lg font-extrabold text-ss-cream">Agent</p>
+                <p className="mt-1 font-sans text-3xl font-extrabold text-ss-accent">$149<span className="font-mono text-sm text-ss-muted">/mo</span></p>
+                <ul className="mt-4 space-y-1.5">
+                  {["Unlimited SKUs", "All channels + multi-warehouse", "Autonomous PO generation", "90-day AI forecast", "5 users"].map(f => (
+                    <li key={f} className="flex items-center gap-2 font-mono text-[11px] text-ss-cream/70">
+                      <span className="text-ss-green">✓</span> {f}
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  onClick={() => void handleCheckout("agent")}
+                  disabled={checkoutBusy !== null}
+                  className="mt-6 w-full bg-ss-accent py-3 font-sans text-sm font-bold text-white transition hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#00e5a0] disabled:opacity-50"
+                >
+                  {checkoutBusy === "agent" ? "Redirecting…" : "Get Agent →"}
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
 
       <footer className="mt-4 border-t border-white/[0.04] px-6 py-6 text-center md:px-12">
         <p className="font-mono text-[10px] text-ss-muted">
