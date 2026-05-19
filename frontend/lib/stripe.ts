@@ -10,16 +10,19 @@ export const stripe = new Stripe(
 export const PLANS = {
   starter: {
     name: "Starter",
-    priceId: process.env.STRIPE_STARTER_PRICE_ID!,
+    priceId: process.env.STRIPE_STARTER_PRICE_ID ?? "",
     amount: 49,
-    features: ["Up to 50 SKUs", "Amazon + Shopify", "AI reasoning + explanations", "30-day forecast", "1 user"],
   },
-  agent: {
-    name: "Agent",
-    priceId: process.env.STRIPE_AGENT_PRICE_ID!,
+  pro: {
+    name: "Pro",
+    priceId: process.env.STRIPE_PRO_PRICE_ID ?? "",
     amount: 149,
-    features: ["Unlimited SKUs", "All channels + multi-warehouse", "Autonomous PO generation", "90-day AI forecast", "5 users"],
+  },
+  agency: {
+    name: "Agency",
+    priceId: process.env.STRIPE_AGENCY_PRICE_ID ?? "",
+    amount: 399,
   },
 } as const;
 
-export type PlanKey = keyof typeof PLANS;
+export type StripePlanKey = keyof typeof PLANS;

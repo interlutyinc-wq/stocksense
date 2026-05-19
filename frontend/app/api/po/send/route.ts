@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { sendPOEmail } from "@/lib/email";
+import { getLimits } from "@/lib/plans";
 import { NextResponse } from "next/server";
 
 interface PORequest {
@@ -19,6 +20,21 @@ export async function POST(request: Request) {
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Check plan gate
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("plan")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const limits = getLimits(profile?.plan ?? "free");
+  if (!limits.canSendPO) {
+    return NextResponse.json(
+      { error: "Upgrade to Starter or higher to send purchase orders.", upgrade: true },
+      { status: 403 },
+    );
   }
 
   const body = (await request.json()) as PORequest;

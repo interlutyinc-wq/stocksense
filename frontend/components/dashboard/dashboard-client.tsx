@@ -22,12 +22,14 @@ const MODEL_OPTIONS: { value: BusinessModel; label: string; desc: string }[] = [
   { value: "hybrid",       label: "Hybrid",         desc: "Mix of own stock and dropshipping" },
 ];
 
-type Plan = "free" | "starter" | "agent" | "enterprise";
+type Plan = "free" | "starter" | "agent" | "pro" | "agency" | "enterprise";
 
 const PLAN_LABELS: Record<Plan, string> = {
   free: "Free",
   starter: "Starter · $49/mo",
-  agent: "Agent · $149/mo",
+  agent: "Pro · $149/mo",
+  pro: "Pro · $149/mo",
+  agency: "Agency · $399/mo",
   enterprise: "Enterprise",
 };
 
@@ -68,7 +70,7 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
     router.push("/onboarding");
   }
 
-  async function handleCheckout(planKey: "starter" | "agent") {
+  async function handleCheckout(planKey: "starter" | "pro" | "agency") {
     setCheckoutBusy(planKey);
     try {
       const res = await fetch("/api/stripe/checkout", {
@@ -369,6 +371,18 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
             )}
           </div>
 
+          {analysisResult?.sku_limit_applied && (
+            <div className="mb-4 border border-ss-accent/30 bg-ss-accent/5 px-4 py-3 flex items-center justify-between gap-4">
+              <p className="font-mono text-xs text-ss-accent/90">
+                ⚠ Showing first 10 of {analysisResult.total_skus_in_store} SKUs — upgrade to analyze your full catalog.
+              </p>
+              <button type="button" onClick={() => void handleCheckout("starter")}
+                className="shrink-0 border border-ss-accent/50 px-3 py-1 font-mono text-[10px] text-ss-accent hover:bg-ss-accent/10">
+                Upgrade →
+              </button>
+            </div>
+          )}
+
           <div className="border border-white/[0.06] bg-ss-surface">
             {!analysisResult ? (
               /* Empty state */
@@ -407,7 +421,7 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
                     </p>
                     <ul className="divide-y divide-white/[0.04]">
                       {urgentRecs.map((rec, i) => (
-                        <RecommendationRow key={i} rec={rec} />
+                        <RecommendationRow key={i} rec={rec} onUpgrade={() => void handleCheckout("starter")} />
                       ))}
                     </ul>
                   </div>
@@ -421,7 +435,7 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
                     </p>
                     <ul className="divide-y divide-white/[0.04]">
                       {okRecs.map((rec, i) => (
-                        <RecommendationRow key={i} rec={rec} />
+                        <RecommendationRow key={i} rec={rec} onUpgrade={() => void handleCheckout("starter")} />
                       ))}
                     </ul>
                   </div>
@@ -441,52 +455,63 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
       </main>
 
         {/* ── Upgrade / Plan ── */}
-        {plan === "free" && (
+        {(plan === "free" || plan === "starter") && (
           <section aria-labelledby="upgrade-heading">
             <h2 id="upgrade-heading" className="mb-4 font-sans text-base font-bold text-ss-cream">
-              Upgrade your plan
+              {plan === "free" ? "Upgrade your plan" : "Upgrade for more"}
             </h2>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               {/* Starter */}
-              <div className="border border-white/[0.06] bg-ss-surface p-6">
-                <p className="font-sans text-lg font-extrabold text-ss-cream">Starter</p>
-                <p className="mt-1 font-sans text-3xl font-extrabold text-ss-accent">$49<span className="font-mono text-sm text-ss-muted">/mo</span></p>
-                <ul className="mt-4 space-y-1.5">
-                  {["Up to 50 SKUs", "Amazon + Shopify", "AI reasoning + explanations", "30-day forecast", "1 user"].map(f => (
-                    <li key={f} className="flex items-center gap-2 font-mono text-[11px] text-ss-cream/70">
+              {plan === "free" && (
+                <div className="border border-white/[0.06] bg-ss-surface p-5">
+                  <p className="font-sans text-base font-extrabold text-ss-cream">Starter</p>
+                  <p className="mt-1 font-sans text-2xl font-extrabold text-ss-accent">$49<span className="font-mono text-xs text-ss-muted">/mo</span></p>
+                  <ul className="mt-3 space-y-1">
+                    {["50 SKUs", "Invio PO", "Auto-import fornitori", "30-day history", "1 user"].map(f => (
+                      <li key={f} className="flex items-center gap-2 font-mono text-[10px] text-ss-cream/70">
+                        <span className="text-ss-green">✓</span> {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <button type="button" onClick={() => void handleCheckout("starter")} disabled={checkoutBusy !== null}
+                    className="mt-4 w-full border border-ss-accent/50 bg-ss-accent/10 py-2.5 font-sans text-xs font-bold text-ss-accent transition hover:bg-ss-accent/20 disabled:opacity-50">
+                    {checkoutBusy === "starter" ? "Redirecting…" : "Get Starter →"}
+                  </button>
+                </div>
+              )}
+
+              {/* Pro */}
+              <div className="relative border border-ss-accent/30 bg-ss-surface p-5">
+                <span className="absolute -top-3 left-4 bg-ss-accent px-2 py-0.5 font-mono text-[9px] font-bold text-white">MOST POPULAR</span>
+                <p className="font-sans text-base font-extrabold text-ss-cream">Pro</p>
+                <p className="mt-1 font-sans text-2xl font-extrabold text-ss-accent">$149<span className="font-mono text-xs text-ss-muted">/mo</span></p>
+                <ul className="mt-3 space-y-1">
+                  {["SKU illimitati", "Tutti i canali", "PO autonomi", "90-day history", "3 utenti", "Report export"].map(f => (
+                    <li key={f} className="flex items-center gap-2 font-mono text-[10px] text-ss-cream/70">
                       <span className="text-ss-green">✓</span> {f}
                     </li>
                   ))}
                 </ul>
-                <button
-                  type="button"
-                  onClick={() => void handleCheckout("starter")}
-                  disabled={checkoutBusy !== null}
-                  className="mt-6 w-full border border-ss-accent/50 bg-ss-accent/10 py-3 font-sans text-sm font-bold text-ss-accent transition hover:bg-ss-accent/20 disabled:opacity-50"
-                >
-                  {checkoutBusy === "starter" ? "Redirecting…" : "Get Starter →"}
+                <button type="button" onClick={() => void handleCheckout("pro")} disabled={checkoutBusy !== null}
+                  className="mt-4 w-full bg-ss-accent py-2.5 font-sans text-xs font-bold text-white transition hover:-translate-y-0.5 disabled:opacity-50">
+                  {checkoutBusy === "pro" ? "Redirecting…" : "Get Pro →"}
                 </button>
               </div>
 
-              {/* Agent */}
-              <div className="relative border border-ss-accent/30 bg-ss-surface p-6">
-                <span className="absolute -top-3 left-4 bg-ss-accent px-3 py-0.5 font-mono text-[10px] font-bold text-white">MOST POPULAR</span>
-                <p className="font-sans text-lg font-extrabold text-ss-cream">Agent</p>
-                <p className="mt-1 font-sans text-3xl font-extrabold text-ss-accent">$149<span className="font-mono text-sm text-ss-muted">/mo</span></p>
-                <ul className="mt-4 space-y-1.5">
-                  {["Unlimited SKUs", "All channels + multi-warehouse", "Autonomous PO generation", "90-day AI forecast", "5 users"].map(f => (
-                    <li key={f} className="flex items-center gap-2 font-mono text-[11px] text-ss-cream/70">
+              {/* Agency */}
+              <div className="border border-white/[0.06] bg-ss-surface p-5">
+                <p className="font-sans text-base font-extrabold text-ss-cream">Agency</p>
+                <p className="mt-1 font-sans text-2xl font-extrabold text-ss-accent">$399<span className="font-mono text-xs text-ss-muted">/mo</span></p>
+                <ul className="mt-3 space-y-1">
+                  {["Fino a 5 store", "10 utenti", "History illimitata", "Report export", "Support dedicato"].map(f => (
+                    <li key={f} className="flex items-center gap-2 font-mono text-[10px] text-ss-cream/70">
                       <span className="text-ss-green">✓</span> {f}
                     </li>
                   ))}
                 </ul>
-                <button
-                  type="button"
-                  onClick={() => void handleCheckout("agent")}
-                  disabled={checkoutBusy !== null}
-                  className="mt-6 w-full bg-ss-accent py-3 font-sans text-sm font-bold text-white transition hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#00e5a0] disabled:opacity-50"
-                >
-                  {checkoutBusy === "agent" ? "Redirecting…" : "Get Agent →"}
+                <button type="button" onClick={() => void handleCheckout("agency")} disabled={checkoutBusy !== null}
+                  className="mt-4 w-full border border-white/[0.08] py-2.5 font-sans text-xs font-bold text-ss-cream transition hover:border-ss-accent/40 disabled:opacity-50">
+                  {checkoutBusy === "agency" ? "Redirecting…" : "Get Agency →"}
                 </button>
               </div>
             </div>
@@ -504,7 +529,7 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
 
 /* ── Recommendation row ─────────────────────────────────────────────────────── */
 
-function RecommendationRow({ rec }: { rec: Recommendation }) {
+function RecommendationRow({ rec, onUpgrade }: { rec: Recommendation; onUpgrade: () => void }) {
   const [expanded, setExpanded] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -609,13 +634,13 @@ function RecommendationRow({ rec }: { rec: Recommendation }) {
         </div>
 
         {/* Send PO action */}
-        {rec.supplier_email && rec.status !== "ok" && rec.reorder_qty > 0 && (
+        {rec.status !== "ok" && rec.reorder_qty > 0 && (
           <div className="shrink-0 flex flex-col items-end gap-1">
             {sent ? (
               <span className="border border-ss-green/30 bg-ss-green/10 px-3 py-1.5 font-mono text-[10px] text-ss-green">
                 ✓ PO sent
               </span>
-            ) : (
+            ) : rec.supplier_email ? (
               <button
                 type="button"
                 onClick={() => void handleSendPO()}
@@ -624,10 +649,17 @@ function RecommendationRow({ rec }: { rec: Recommendation }) {
               >
                 {sending ? "Sending…" : "Approve & Send PO →"}
               </button>
+            ) : (
+              <span className="font-mono text-[9px] text-ss-muted">No supplier email</span>
             )}
-            {sendError && (
+            {sendError?.includes("Upgrade") ? (
+              <button type="button" onClick={onUpgrade}
+                className="font-mono text-[9px] text-ss-accent underline">
+                Upgrade to send POs →
+              </button>
+            ) : sendError ? (
               <p className="font-mono text-[9px] text-ss-accent max-w-[160px] text-right">{sendError}</p>
-            )}
+            ) : null}
           </div>
         )}
       </div>

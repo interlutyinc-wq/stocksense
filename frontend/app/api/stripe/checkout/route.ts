@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { stripe, PLANS, type PlanKey } from "@/lib/stripe";
+import { stripe, PLANS, type StripePlanKey as PlanKey } from "@/lib/stripe";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {

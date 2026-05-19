@@ -6,15 +6,17 @@ import type Stripe from "stripe";
 export const runtime = "nodejs";
 
 // Map Stripe price IDs → plan names
-function planFromPriceId(priceId: string): "starter" | "agent" | null {
+function planFromPriceId(priceId: string): "starter" | "pro" | "agency" | null {
   if (priceId === process.env.STRIPE_STARTER_PRICE_ID) return "starter";
-  if (priceId === process.env.STRIPE_AGENT_PRICE_ID) return "agent";
+  if (priceId === process.env.STRIPE_PRO_PRICE_ID) return "pro";
+  if (priceId === process.env.STRIPE_AGENT_PRICE_ID) return "pro"; // legacy
+  if (priceId === process.env.STRIPE_AGENCY_PRICE_ID) return "agency";
   return null;
 }
 
 async function updateUserPlan(
   supabaseUserId: string,
-  plan: "free" | "starter" | "agent",
+  plan: "free" | "starter" | "pro" | "agency",
   subscriptionId: string | null,
 ) {
   const supabase = await createClient();
@@ -43,7 +45,8 @@ export async function POST(request: Request) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
       const userId = session.metadata?.supabase_user_id;
-      const plan = session.metadata?.plan as "starter" | "agent" | undefined;
+      const rawPlan = session.metadata?.plan;
+      const plan = (rawPlan === "agent" ? "pro" : rawPlan) as "starter" | "pro" | "agency" | undefined;
       const subId = typeof session.subscription === "string" ? session.subscription : null;
 
       if (userId && plan) {
@@ -58,7 +61,7 @@ export async function POST(request: Request) {
       const priceId = sub.items.data[0]?.price.id;
       const plan = priceId ? planFromPriceId(priceId) : null;
 
-      if (userId && plan && sub.status === "active") {
+      if (userId && plan && (sub.status === "active" || sub.status === "trialing")) {
         await updateUserPlan(userId, plan, sub.id);
       }
       break;

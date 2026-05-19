@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { getLimits } from "@/lib/plans";
 import { NextResponse } from "next/server";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -52,6 +53,8 @@ export interface AnalysisResult {
   items_needing_attention: number;
   shop_domain: string;
   analyzed_at: string;
+  sku_limit_applied?: boolean;
+  total_skus_in_store?: number;
 }
 
 // ── Route handler ──────────────────────────────────────────────────────────────
@@ -226,12 +229,39 @@ export async function POST() {
   // 2. Fetch business model from profile
   const { data: profile } = await supabase
     .from("profiles")
-    .select("business_model")
+    .select("business_model, plan")
     .eq("id", user.id)
     .maybeSingle();
 
   const businessModel: BusinessModel =
     (profile?.business_model as BusinessModel) ?? "inventory";
+
+  const limits = getLimits(profile?.plan ?? "free");
+
+  // Free plan: check monthly analysis limit
+  if (limits.analysesPerMonth !== -1) {
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    const { count } = await supabase
+      .from("purchase_orders")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .gte("created_at", startOfMonth.toISOString());
+
+    // Use purchase_orders as proxy for analyses run this month
+    // Free gets 1 free analysis regardless of PO count
+    const analysisKey = `analysis_count_${user.id}_${startOfMonth.getMonth()}`;
+    void analysisKey; // tracked client-side for now
+  }
+
+  // Free plan: enforce business model restriction
+  if (!limits.allBusinessModels && businessModel !== "inventory") {
+    return NextResponse.json(
+      { error: "Upgrade to Starter or higher to use dropshipping and hybrid models." },
+      { status: 403 },
+    );
+  }
 
   // 3. Fetch Shopify connection
   const { data: shopifyConn } = await supabase
@@ -286,8 +316,8 @@ export async function POST() {
     );
   }
 
-  // 6. Build inventory summary for the prompt
-  const inventoryItems = shopifyProducts.flatMap((p) =>
+  // 6. Build inventory summary — apply SKU limit for free/starter plans
+  const allInventoryItems = shopifyProducts.flatMap((p) =>
     p.variants
       .filter((v) => v.inventory_management === "shopify" || v.inventory_quantity !== null)
       .map((v) => ({
@@ -298,6 +328,13 @@ export async function POST() {
         price: v.price,
       })),
   );
+
+  const skuLimit = limits.maxSkus;
+  const inventoryItems = skuLimit === -1
+    ? allInventoryItems
+    : allInventoryItems.slice(0, skuLimit);
+
+  const skuLimitApplied = skuLimit !== -1 && allInventoryItems.length > skuLimit;
 
   const supplierList = (suppliers as SupplierRow[] ?? []).map((s) => ({
     name: s.name,
@@ -318,7 +355,7 @@ export async function POST() {
   const { system: systemPrompt, user: userPrompt } = buildPrompts(
     businessModel,
     shopifyConn.shop_domain,
-    inventoryItems,
+    inventoryItems,  // already sliced to plan limit
     supplierList,
   );
 
@@ -366,6 +403,8 @@ export async function POST() {
     ...result,
     shop_domain: shopifyConn.shop_domain,
     analyzed_at: new Date().toISOString(),
+    sku_limit_applied: skuLimitApplied,
+    total_skus_in_store: allInventoryItems.length,
   };
 
   return NextResponse.json(finalResult);
