@@ -24,6 +24,20 @@ const MODEL_OPTIONS: { value: BusinessModel; label: string; desc: string }[] = [
 
 type Plan = "free" | "starter" | "agent" | "pro" | "agency" | "enterprise";
 
+type PurchaseOrder = {
+  id: string;
+  supplier_name: string;
+  supplier_email: string;
+  sku: string;
+  product_name: string;
+  quantity: number;
+  total_cost: number | null;
+  urgency: string | null;
+  status: "draft" | "approved" | "sent";
+  created_at: string;
+  sent_at: string | null;
+};
+
 const PLAN_LABELS: Record<Plan, string> = {
   free: "Free",
   starter: "Starter · $49/mo",
@@ -39,6 +53,7 @@ type Props = {
   suppliers: Supplier[];
   businessModel: BusinessModel;
   plan: Plan;
+  purchaseOrders: PurchaseOrder[];
 };
 
 const STATUS_STYLES: Record<Recommendation["status"], string> = {
@@ -53,7 +68,7 @@ const STATUS_LABELS: Record<Recommendation["status"], string> = {
   ok: "OK",
 };
 
-export function DashboardClient({ userEmail, shopDomain, suppliers, businessModel: initialModel, plan }: Props) {
+export function DashboardClient({ userEmail, shopDomain, suppliers, businessModel: initialModel, plan, purchaseOrders }: Props) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
@@ -514,6 +529,53 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
                   {checkoutBusy === "agency" ? "Redirecting…" : "Get Agency →"}
                 </button>
               </div>
+            </div>
+          </section>
+        )}
+
+        {/* ── Purchase Order History ── */}
+        {purchaseOrders.length > 0 && (
+          <section aria-labelledby="po-history-heading">
+            <h2 id="po-history-heading" className="mb-4 font-sans text-base font-bold text-ss-cream">
+              Purchase order history
+            </h2>
+            <div className="border border-white/[0.06] bg-ss-surface divide-y divide-white/[0.04]">
+              {purchaseOrders.map((po) => (
+                <div key={po.id} className="flex items-center justify-between gap-4 px-5 py-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`font-mono text-[9px] px-2 py-0.5 border ${
+                        po.status === "sent"
+                          ? "border-ss-green/30 bg-ss-green/10 text-ss-green"
+                          : "border-white/[0.08] text-ss-muted"
+                      }`}>
+                        {po.status.toUpperCase()}
+                      </span>
+                      <p className="font-sans text-sm font-bold text-ss-cream truncate">
+                        {po.product_name}
+                      </p>
+                      <span className="font-mono text-[10px] text-ss-muted">{po.sku}</span>
+                    </div>
+                    <p className="mt-1 font-mono text-[11px] text-ss-muted">
+                      {po.supplier_name} ·{" "}
+                      {new Date(po.created_at).toLocaleDateString("en-GB")}
+                      {po.sent_at && (
+                        <span className="text-ss-green"> · sent {new Date(po.sent_at).toLocaleDateString("en-GB")}</span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="font-mono text-sm font-bold text-ss-cream">
+                      {po.quantity} units
+                    </p>
+                    {po.total_cost != null && po.total_cost > 0 && (
+                      <p className="font-mono text-[10px] text-ss-muted">
+                        ${po.total_cost.toFixed(0)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </section>
         )}

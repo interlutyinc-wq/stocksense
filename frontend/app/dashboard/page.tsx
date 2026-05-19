@@ -15,7 +15,7 @@ export default async function DashboardPage() {
     redirect("/onboarding");
   }
 
-  const [{ data: shopifyData }, { data: suppliersData }, { data: profileData }] =
+  const [{ data: shopifyData }, { data: suppliersData }, { data: profileData }, { data: purchaseOrdersData }] =
     await Promise.all([
       supabase
         .from("shopify_connections")
@@ -32,6 +32,12 @@ export default async function DashboardPage() {
         .select("business_model, plan")
         .eq("id", user.id)
         .maybeSingle(),
+      supabase
+        .from("purchase_orders")
+        .select("id, supplier_name, supplier_email, sku, product_name, quantity, total_cost, urgency, status, created_at, sent_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(50),
     ]);
 
   return (
@@ -40,7 +46,8 @@ export default async function DashboardPage() {
       shopDomain={shopifyData?.shop_domain ?? null}
       suppliers={suppliersData ?? []}
       businessModel={(profileData?.business_model as "inventory" | "dropshipping" | "hybrid") ?? "inventory"}
-      plan={(profileData?.plan as "free" | "starter" | "agent" | "enterprise") ?? "free"}
+      plan={(profileData?.plan as "free" | "starter" | "pro" | "agency" | "enterprise") ?? "free"}
+      purchaseOrders={purchaseOrdersData ?? []}
     />
   );
 }
