@@ -12,13 +12,14 @@ const URGENCY_COLORS: Record<string, string> = {
   low: "#10b981",
 };
 
-export default async function SharedReportPage({ params }: { params: { id: string } }) {
+export default async function SharedReportPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = await createClient();
 
   const { data: report, error } = await supabase
     .from("shared_reports")
     .select("*")
-    .eq("id", params.id)
+    .eq("id", id)
     .maybeSingle();
 
   if (error || !report) notFound();
@@ -27,7 +28,7 @@ export default async function SharedReportPage({ params }: { params: { id: strin
   await supabase
     .from("shared_reports")
     .update({ views: report.views + 1 })
-    .eq("id", params.id);
+    .eq("id", id);
 
   const result = report.data as unknown as AnalysisResult;
   const urgent = result.recommendations?.filter(
