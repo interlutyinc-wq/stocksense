@@ -84,7 +84,7 @@ export default function Home() {
             href="/marketing"
             className="font-mono text-xs text-ss-muted transition hover:text-ss-cream"
           >
-            View marketing site
+            See how it works →
           </Link>
         </div>
       </main>
