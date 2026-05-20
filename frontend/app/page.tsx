@@ -78,7 +78,7 @@ export default function Home() {
             href="/onboarding"
             className="inline-flex items-center justify-center bg-ss-accent px-10 py-4 font-sans text-sm font-bold tracking-wide text-white transition hover:-translate-y-0.5 hover:shadow-[3px_3px_0_#00e5a0]"
           >
-            Start onboarding →
+            Start for free →
           </Link>
           <Link
             href="/marketing"
