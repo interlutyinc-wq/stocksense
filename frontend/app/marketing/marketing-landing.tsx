@@ -409,29 +409,48 @@ export function MarketingLanding() {
 
         <div className="pricing-grid">
           <div className="plan reveal">
+            <div className="plan-name">Free</div>
+            <div className="plan-price">
+              <sup>$</sup>0<small>/mo</small>
+            </div>
+            <div className="plan-desc">
+              Try StockSense with your first store. No credit card required.
+            </div>
+            <ul className="plan-feats">
+              <li>10 SKUs analyzed</li>
+              <li>1 AI analysis per month</li>
+              <li>View recommendations</li>
+              <li>1 supplier</li>
+            </ul>
+            <a href="/onboarding" className="plan-btn outline">
+              Start free →
+            </a>
+          </div>
+
+          <div className="plan reveal">
             <div className="plan-name">Starter</div>
             <div className="plan-price">
               <sup>$</sup>49<small>/mo</small>
             </div>
             <div className="plan-desc">
-              For solo operators getting started with AI inventory.
+              For solo operators ready to automate their supply chain.
             </div>
             <ul className="plan-feats">
               <li>Up to 50 SKUs</li>
-              <li>Amazon + Shopify</li>
-              <li>AI reasoning + explanations</li>
-              <li>Email alerts & PO drafts</li>
-              <li>30-day demand forecast</li>
+              <li>Unlimited AI analyses</li>
+              <li>Send purchase orders</li>
+              <li>Auto-import suppliers</li>
+              <li>30-day PO history</li>
               <li>1 user</li>
             </ul>
             <a href="/onboarding" className="plan-btn outline">
-              Get started →
+              Get Starter →
             </a>
           </div>
 
           <div className="plan hot reveal">
             <div className="plan-badge">Most Popular</div>
-            <div className="plan-name">Agent</div>
+            <div className="plan-name">Pro</div>
             <div className="plan-price">
               <sup>$</sup>149<small>/mo</small>
             </div>
@@ -440,39 +459,35 @@ export function MarketingLanding() {
             </div>
             <ul className="plan-feats">
               <li>Unlimited SKUs</li>
-              <li>All channels + multi-warehouse</li>
               <li>Autonomous PO generation</li>
-              <li>Supplier consolidation AI</li>
-              <li>90-day AI forecast</li>
-              <li>Email alerts & PO delivery</li>
-              <li>5 users</li>
+              <li>All business models</li>
+              <li>Export CSV reports</li>
+              <li>90-day history</li>
+              <li>3 users</li>
             </ul>
             <a href="/onboarding" className="plan-btn filled">
-              Get Agent →
+              Get Pro →
             </a>
           </div>
 
           <div className="plan reveal">
-            <div className="plan-name">Enterprise</div>
-            <div
-              className="plan-price"
-              style={{ fontSize: 36, letterSpacing: "-1px" }}
-            >
-              Custom
+            <div className="plan-name">Agency</div>
+            <div className="plan-price">
+              <sup>$</sup>399<small>/mo</small>
             </div>
             <div className="plan-desc">
-              For brands with complex supply chains and large teams.
+              For agencies managing multiple Shopify stores.
             </div>
             <ul className="plan-feats">
-              <li>Custom SKU limits</li>
-              <li>ERP integrations (SAP, NetSuite)</li>
-              <li>Dedicated agent training</li>
-              <li>API access + white-label</li>
-              <li>SLA + dedicated support</li>
-              <li>Unlimited users</li>
+              <li>Up to 5 stores</li>
+              <li>Unlimited SKUs</li>
+              <li>Full history</li>
+              <li>Export reports</li>
+              <li>10 users</li>
+              <li>Priority support</li>
             </ul>
-            <a href="mailto:interlutyinc@gmail.com?subject=StockSense Enterprise" className="plan-btn outline">
-              Contact us →
+            <a href="/onboarding" className="plan-btn outline">
+              Get Agency →
             </a>
           </div>
         </div>

@@ -335,15 +335,17 @@
   .marketing-page .pricing { padding:100px 48px;border-top:1px solid var(--border); }
 
   .marketing-page .pricing-grid {
-    display:grid;grid-template-columns:repeat(3,1fr);
+    display:grid;grid-template-columns:repeat(4,1fr);
     border:1px solid var(--border);
-    max-width:960px;margin:60px auto 0;
+    max-width:1200px;margin:60px auto 0;
   }
 
-  @media (max-width: 800px) {
-    .marketing-page .pricing-grid {
-      grid-template-columns: 1fr;
-    }
+  @media (max-width: 1100px) {
+    .marketing-page .pricing-grid { grid-template-columns:repeat(2,1fr); }
+  }
+
+  @media (max-width: 600px) {
+    .marketing-page .pricing-grid { grid-template-columns:1fr; }
   }
 
   .marketing-page .plan {
