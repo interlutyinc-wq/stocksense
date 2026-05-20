@@ -526,6 +526,82 @@
     .marketing-page .faq-section { padding:60px 20px; }
   }
 
+  /* PRODUCT PREVIEW */
+  .marketing-page .product-preview {
+    padding:100px 48px;border-top:1px solid var(--border);
+  }
+  .marketing-page .mock-window {
+    max-width:860px;margin:60px auto 0;
+    border:1px solid rgba(255,255,255,0.1);
+    background:#0d0d0d;border-radius:8px;overflow:hidden;
+    box-shadow:0 0 80px rgba(255,77,28,0.08);
+  }
+  .marketing-page .mock-bar {
+    background:#1a1a1a;padding:12px 16px;
+    display:flex;align-items:center;gap:6px;
+    border-bottom:1px solid rgba(255,255,255,0.06);
+  }
+  .marketing-page .mock-dot {
+    width:12px;height:12px;border-radius:50%;display:inline-block;
+  }
+  .marketing-page .mock-body { padding:20px; }
+  .marketing-page .mock-summary {
+    background:#141414;border:1px solid rgba(255,255,255,0.06);
+    padding:16px 20px;margin-bottom:12px;
+  }
+  .marketing-page .mock-label {
+    font-size:10px;color:var(--accent);letter-spacing:0.2em;
+    display:block;margin-bottom:6px;
+  }
+  .marketing-page .mock-summary p { font-size:13px;color:#9ca3af;line-height:1.6; }
+  .marketing-page .mock-rec {
+    background:#141414;border:1px solid rgba(255,255,255,0.06);
+    padding:16px 20px;margin-bottom:8px;
+  }
+  .marketing-page .mock-rec-critical { border-left:2px solid var(--accent); }
+  .marketing-page .mock-rec-low { border-left:2px solid #f59e0b; }
+  .marketing-page .mock-rec-header {
+    display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;
+  }
+  .marketing-page .mock-badge {
+    font-size:9px;font-weight:700;padding:2px 8px;
+    letter-spacing:0.1em;text-transform:uppercase;
+  }
+  .marketing-page .mock-badge-critical {
+    border:1px solid rgba(255,77,28,0.4);color:var(--accent);
+  }
+  .marketing-page .mock-badge-low {
+    border:1px solid rgba(245,158,11,0.4);color:#f59e0b;
+  }
+  .marketing-page .mock-product {
+    font-family:var(--font-syne),sans-serif;font-size:14px;font-weight:700;color:var(--white);
+  }
+  .marketing-page .mock-sku { font-size:10px;color:var(--muted); }
+  .marketing-page .mock-metrics {
+    display:flex;flex-wrap:wrap;gap:16px;
+    font-size:11px;color:#9ca3af;margin-bottom:10px;
+  }
+  .marketing-page .mock-reasoning {
+    background:#0d0d0d;border-left:2px solid rgba(255,77,28,0.3);
+    padding:10px 14px;margin-bottom:12px;
+  }
+  .marketing-page .mock-reason-label {
+    font-size:9px;color:var(--muted);letter-spacing:0.15em;
+    text-transform:uppercase;display:block;margin-bottom:4px;
+  }
+  .marketing-page .mock-reasoning p { font-size:12px;color:#9ca3af;line-height:1.7; }
+  .marketing-page .mock-actions { display:flex;justify-content:flex-end; }
+  .marketing-page .mock-btn-po {
+    background:rgba(0,229,160,0.1);border:1px solid rgba(0,229,160,0.3);
+    color:var(--green);font-size:11px;font-weight:700;
+    padding:8px 16px;cursor:pointer;letter-spacing:0.05em;
+  }
+
+  @media(max-width:700px) {
+    .marketing-page .product-preview { padding:60px 20px; }
+    .marketing-page .mock-metrics { gap:8px; }
+  }
+
   /* ANIMS */
   @keyframes up { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
 

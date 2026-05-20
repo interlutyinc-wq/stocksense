@@ -404,6 +404,85 @@ export function MarketingLanding() {
         </div>
       </section>
 
+      <section className="product-preview">
+        <div className="section-eyebrow" style={{ justifyContent: "center" }}>
+          The product
+        </div>
+        <h2 style={{ textAlign: "center" }}>
+          See the agent
+          <br />
+          <span className="accent">in action.</span>
+        </h2>
+        <p style={{ textAlign: "center", color: "var(--muted)", fontSize: 14, maxWidth: 520, margin: "16px auto 0" }}>
+          Real output from StockSense. The agent analyzes your live Shopify inventory and tells you exactly what to do — and why.
+        </p>
+
+        <div className="mock-window reveal">
+          <div className="mock-bar">
+            <span className="mock-dot" style={{ background: "#ff5f57" }} />
+            <span className="mock-dot" style={{ background: "#febc2e" }} />
+            <span className="mock-dot" style={{ background: "#28c840" }} />
+            <span style={{ marginLeft: 10, fontSize: 11, color: "#4a4a4a" }}>StockSense · Recommendations</span>
+          </div>
+          <div className="mock-body">
+            <div className="mock-summary">
+              <span className="mock-label">→ ANALYSIS COMPLETE</span>
+              <p>3 SKUs need immediate attention. 2 critical stockouts in the next 7 days. Agent has drafted purchase orders for your approval.</p>
+            </div>
+
+            {[
+              {
+                status: "critical",
+                product: "Wireless Earbuds Pro X",
+                sku: "WEP-001",
+                stock: 4,
+                velocity: "2.8/day",
+                runway: "1d",
+                reorder: 200,
+                cost: "$840",
+                supplier: "TechSource EU",
+                reasoning: "At 2.8 units/day velocity with only 4 units remaining, you will hit zero stock in 1 day. Supplier TechSource EU has a 5-day lead time — order immediately to avoid a 4-day stockout during peak demand.",
+              },
+              {
+                status: "low",
+                product: "Standing Desk Frame",
+                sku: "SDF-003",
+                stock: 18,
+                velocity: "1.2/day",
+                runway: "15d",
+                reorder: 80,
+                cost: "$3,200",
+                supplier: "ErgoSupply",
+                reasoning: "15 days of runway with supplier lead time of 12 days leaves a 3-day safety margin. Reorder now to maintain buffer stock heading into the weekend sales spike.",
+              },
+            ].map((rec, i) => (
+              <div key={i} className={`mock-rec mock-rec-${rec.status}`}>
+                <div className="mock-rec-header">
+                  <span className={`mock-badge mock-badge-${rec.status}`}>{rec.status}</span>
+                  <span className="mock-product">{rec.product}</span>
+                  <span className="mock-sku">{rec.sku}</span>
+                </div>
+                <div className="mock-metrics">
+                  <span>Stock: <strong style={{ color: rec.status === "critical" ? "#ff4d1c" : "#f4f1ea" }}>{rec.stock} units</strong></span>
+                  <span>Velocity: <strong>{rec.velocity}</strong></span>
+                  <span>Runway: <strong style={{ color: rec.status === "critical" ? "#ff4d1c" : "#f59e0b" }}>{rec.runway}</strong></span>
+                  <span>Reorder: <strong style={{ color: "#00e5a0" }}>{rec.reorder} units</strong></span>
+                  <span>Est. cost: <strong>{rec.cost}</strong></span>
+                  <span>Supplier: <strong>{rec.supplier}</strong></span>
+                </div>
+                <div className="mock-reasoning">
+                  <span className="mock-reason-label">Agent reasoning</span>
+                  <p>{rec.reasoning}</p>
+                </div>
+                <div className="mock-actions">
+                  <button className="mock-btn-po">Approve & Send PO →</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="faq-section">
         <div className="section-eyebrow" style={{ justifyContent: "center" }}>
           FAQ
