@@ -179,6 +179,13 @@ export function MarketingLanding() {
             See the difference ↓
           </button>
         </div>
+
+        <div className="hero-trust">
+          <span>✓ No credit card required</span>
+          <span>✓ Free plan forever</span>
+          <span>✓ Connect Shopify in 2 minutes</span>
+          <span>✓ Cancel anytime</span>
+        </div>
       </section>
 
       <div className="ticker">
@@ -397,9 +404,52 @@ export function MarketingLanding() {
         </div>
       </section>
 
+      <section className="faq-section">
+        <div className="section-eyebrow" style={{ justifyContent: "center" }}>
+          FAQ
+        </div>
+        <h2 style={{ textAlign: "center" }}>Common questions</h2>
+        <div className="faq-grid">
+          {[
+            {
+              q: "Does StockSense work with my Shopify store?",
+              a: "Yes. Connect in 2 minutes via OAuth — StockSense reads your live inventory, products, and orders. No manual export needed.",
+            },
+            {
+              q: "What's the difference from Linnworks or Inventory Planner?",
+              a: "Those tools show dashboards and alerts. StockSense reasons through your data and acts — it tells you exactly what to order, why, and sends the purchase order to your supplier automatically.",
+            },
+            {
+              q: "Does it work for dropshipping?",
+              a: "Yes. StockSense supports own inventory, dropshipping, and hybrid models. For dropshipping it focuses on fulfillment risk and sales velocity instead of reorder quantities.",
+            },
+            {
+              q: "How does the AI explain its decisions?",
+              a: "Every recommendation includes a plain-language reasoning block — velocity, days of stock remaining, supplier lead time, estimated cost. No black box.",
+            },
+            {
+              q: "Can I try it for free?",
+              a: "Yes. The Free plan lets you analyze up to 10 SKUs once a month, no credit card required. Upgrade to Starter ($49/mo) to unlock full features.",
+            },
+            {
+              q: "How are purchase orders sent?",
+              a: "StockSense generates the PO and emails it directly to your supplier with one click. The email includes product, SKU, quantity, estimated cost, and AI reasoning.",
+            },
+          ].map((item, i) => (
+            <div key={i} className="faq-item">
+              <div className="faq-q">{item.q}</div>
+              <div className="faq-a">{item.a}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className="pricing">
         <div className="section-eyebrow" style={{ justifyContent: "center" }}>
           Pricing
+        </div>
+        <div className="urgency-banner reveal">
+          🎁 First 100 merchants get <strong>3 months free</strong> on any paid plan
         </div>
         <h2 style={{ textAlign: "center", marginBottom: 0 }}>
           Simple.
