@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { verifyOAuthState } from "@/lib/shopify-oauth-state";
+import { getLimits } from "@/lib/plans";
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -56,6 +57,24 @@ export async function GET(request: NextRequest) {
 
   if (!user || user.id !== statePayload.userId) {
     return fail("session");
+  }
+
+  // Check store limit based on plan
+  const { data: profile } = await supabase
+    .from("profiles").select("plan").eq("id", user.id).maybeSingle();
+  const limits = getLimits(profile?.plan ?? "free");
+
+  if (limits.maxStores !== -1) {
+    const { count } = await supabase
+      .from("shopify_connections")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+
+    if ((count ?? 0) >= limits.maxStores) {
+      return NextResponse.redirect(
+        `${appUrl}/onboarding?step=2&notice=shopify_error&reason=store_limit`
+      );
+    }
   }
 
   const code = params.code;

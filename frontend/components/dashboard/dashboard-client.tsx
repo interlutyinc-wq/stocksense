@@ -631,6 +631,49 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
           </section>
         )}
 
+        {/* ── Team ── */}
+        <section aria-labelledby="team-heading">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 id="team-heading" className="font-sans text-base font-bold text-ss-cream">
+              Team
+            </h2>
+            <span className="font-mono text-[11px] text-ss-muted">
+              {plan === "free" || plan === "starter" ? "1" : plan === "pro" ? "3" : plan === "agency" ? "10" : "1"} seat{plan === "pro" || plan === "agency" ? "s" : ""} available
+            </span>
+          </div>
+          <div className="border border-white/[0.06] bg-ss-surface p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="font-sans text-sm font-bold text-ss-cream">
+                  {userEmail}
+                </p>
+                <p className="mt-0.5 font-mono text-[10px] text-ss-muted">Owner · {PLAN_LABELS[plan as Plan] ?? "Free"}</p>
+              </div>
+              <span className="border border-ss-green/30 bg-ss-green/10 px-2.5 py-1 font-mono text-[10px] text-ss-green">
+                Active
+              </span>
+            </div>
+            {(plan === "pro" || plan === "agency") ? (
+              <div className="mt-4 border-t border-white/[0.04] pt-4">
+                <p className="font-mono text-[11px] text-ss-muted">
+                  Team invitations — coming soon. You&apos;ll be able to invite up to{" "}
+                  <strong className="text-ss-cream">{plan === "pro" ? "2 more" : "9 more"}</strong> team members.
+                </p>
+              </div>
+            ) : (
+              <div className="mt-4 border-t border-white/[0.04] pt-4 flex items-center justify-between">
+                <p className="font-mono text-[11px] text-ss-muted">
+                  Upgrade to Pro for 3 users, Agency for 10.
+                </p>
+                <button type="button" onClick={() => void handleCheckout("pro")}
+                  className="font-mono text-[10px] text-ss-accent underline-offset-2 hover:underline">
+                  Upgrade →
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+
         {/* ── Referral ── */}
         {referralCode && (
           <section aria-labelledby="referral-heading">

@@ -102,6 +102,8 @@ export function OnboardingWizard() {
           text:
             noticeReason === "session"
               ? "Session expired. Sign in again and retry Shopify."
+              : noticeReason === "store_limit"
+              ? "Store limit reached for your plan. Upgrade to Agency to connect up to 5 stores."
               : "Could not complete Shopify connection. Check app credentials and try again.",
         };
       case "check_email":
