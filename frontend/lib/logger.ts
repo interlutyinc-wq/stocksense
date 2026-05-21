@@ -4,6 +4,8 @@
  * Every log entry includes timestamp, level, service, and context.
  */
 
+import * as Sentry from "@sentry/nextjs";
+
 type LogLevel = "debug" | "info" | "warn" | "error";
 
 interface LogEntry {
@@ -88,8 +90,15 @@ export const logger = {
       errCtx.error = err.message;
       errCtx.stack = IS_PROD ? undefined : err.stack;
       errCtx.name = err.name;
+      // Forward to Sentry in production
+      if (IS_PROD) {
+        Sentry.captureException(err, { extra: ctx });
+      }
     } else if (err !== undefined) {
       errCtx.error = String(err);
+      if (IS_PROD) {
+        Sentry.captureMessage(message, { level: "error", extra: { raw: err, ...ctx } });
+      }
     }
     output(formatEntry("error", message, { ...errCtx, ...ctx }));
   },
