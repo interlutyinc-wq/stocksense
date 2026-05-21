@@ -206,6 +206,24 @@ Tutte le tabelle: `profiles`, `shopify_connections`, `suppliers`, `purchase_orde
 
 ---
 
+## Lavori Grafici Mancanti Landing
+
+### Da creare
+1. **OG Image** — immagine 1200x630px per preview social (LinkedIn, Twitter, WhatsApp). Quando si condivide il link appare vuoto. Critico per distribuzione organica.
+2. **Logo SVG** — attualmente solo testo "StockSense" in CSS. Serve file vettoriale.
+3. **Favicon personalizzata** — attuale è default Next.js
+4. **Screenshot reale dashboard** — il mockup è CSS, non una vera screenshot. Serve immagine autentica per la sezione "The product" della landing.
+5. **Hero visual** — la landing è solo testo e CSS. Un visual forte aumenta conversioni.
+
+### Priorità
+- OG Image — ALTA (impatta distribuzione social immediata)
+- Screenshot dashboard — ALTA (impatta conversioni landing)
+- Logo + Favicon — MEDIA
+- Hero visual — BASSA (il dark design funziona anche senza)
+
+### Come creare OG Image in Next.js
+Usare `next/og` con `ImageResponse` — genera immagine dinamica in `/app/opengraph-image.tsx`. Zero asset esterni necessari.
+
 ## Note Operative
 
 - Repo pubblico GitHub — nessuna credenziale nel codice
