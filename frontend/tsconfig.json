@@ -4,7 +4,18 @@
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
-    "strict": true,
+
+    // ── Strict type checking ──────────────────────────────────────────────────
+    "strict": true,                        // Enables all strict checks below
+    "noImplicitAny": true,                 // No implicit 'any' type
+    "strictNullChecks": true,              // null/undefined must be handled explicitly
+    "strictFunctionTypes": true,           // Stricter function type checking
+    "strictPropertyInitialization": true,  // Class properties must be initialized
+    "noUncheckedIndexedAccess": true,      // Array/object access returns T | undefined
+    "noImplicitReturns": true,             // All code paths must return a value
+    "noFallthroughCasesInSwitch": true,    // No fallthrough in switch statements
+    "exactOptionalPropertyTypes": false,   // Allow undefined for optional props
+
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",

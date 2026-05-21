@@ -43,6 +43,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
+  // ── Idempotency guard ──────────────────────────────────────────────────────
+  // Stripe retries webhooks on timeout/5xx. Guard against processing twice.
+  const supabase = await createClient();
+  const eventKey = `stripe:${event.id}`;
+
+  const { data: existing } = await supabase
+    .from("processed_webhooks")
+    .select("id")
+    .eq("id", eventKey)
+    .maybeSingle();
+
+  if (existing) {
+    logger.info("Webhook already processed — skipping", { event_id: event.id, type: event.type });
+    return NextResponse.json({ received: true, duplicate: true });
+  }
+
+  // Mark as processed before handling — prevents race conditions
+  await supabase
+    .from("processed_webhooks")
+    .insert({ id: eventKey, source: "stripe" });
+
+  logger.info("Processing Stripe webhook", { event_id: event.id, type: event.type });
+
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;

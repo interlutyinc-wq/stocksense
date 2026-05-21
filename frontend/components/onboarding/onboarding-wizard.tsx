@@ -339,7 +339,9 @@ export function OnboardingWizard() {
         setImportError(data.error ?? "Failed to fetch vendors.");
         return;
       }
-      const drafts = (data.vendors ?? []).map((v) => ({ ...v, email: "" }));
+      const drafts = (data.vendors ?? [])
+        .filter((v): v is VendorDraft => typeof v.name === "string")
+        .map((v) => ({ ...v, email: "" }));
       if (drafts.length === 0) {
         setImportError("No new vendors found in your Shopify products.");
         return;
@@ -798,7 +800,8 @@ export function OnboardingWizard() {
                                 value={v.email}
                                 onChange={(e) => {
                                   const updated = [...vendorDrafts];
-                                  updated[i] = { ...updated[i], email: e.target.value };
+                                  const current = updated[i];
+                                  if (current) updated[i] = { ...current, email: e.target.value };
                                   setVendorDrafts(updated);
                                 }}
                                 className="w-48 shrink-0 border border-white/[0.1] bg-ss-surface px-2 py-1.5 font-mono text-xs text-ss-cream outline-none ring-ss-accent/30 placeholder:text-ss-muted/50 focus:ring-2"
