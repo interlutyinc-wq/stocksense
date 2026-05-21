@@ -3,6 +3,8 @@ import { sendPOEmail } from "@/lib/email";
 import { getLimits } from "@/lib/plans";
 import { parseBody, sendPOSchema } from "@/lib/validation";
 import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
+import { poIdempotencyKey } from "@/lib/idempotency";
+import { withRetry, isNetworkTransient } from "@/lib/retry";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 
@@ -35,6 +37,22 @@ export async function POST(request: Request) {
   const parsed = await parseBody(request, sendPOSchema);
   if (parsed.error) return parsed.error;
   const { supplierName, supplierEmail, productName, sku, quantity, estimatedCost, urgency, reasoning } = parsed.data;
+
+  // Idempotency: prevent duplicate POs for same supplier+SKU within 1 hour
+  const iKey = poIdempotencyKey(user.id, supplierEmail, sku);
+  const { data: existingPO } = await supabase
+    .from("purchase_orders")
+    .select("id, status")
+    .eq("user_id", user.id)
+    .gte("created_at", new Date(Date.now() - 3600_000).toISOString())
+    .eq("supplier_email", supplierEmail)
+    .eq("sku", sku)
+    .maybeSingle();
+
+  if (existingPO?.status === "sent") {
+    logger.warn("Duplicate PO prevented", { user_id: user.id, sku, supplier_email: supplierEmail, idempotency_key: iKey });
+    return NextResponse.json({ ok: true, poId: existingPO.id, duplicate: true });
+  }
 
   // Find supplier_id if exists
   const { data: supplier } = await supabase
@@ -70,7 +88,8 @@ export async function POST(request: Request) {
 
   // Send email via Resend
   try {
-    await sendPOEmail({
+    await withRetry(
+      () => sendPOEmail({
       to: supplierEmail,
       supplierName,
       merchantEmail: user.email ?? "merchant@stocksense.app",
@@ -81,7 +100,14 @@ export async function POST(request: Request) {
       reasoning,
       poId: po.id,
       plan: profile?.plan ?? "free",
-    });
+    }),
+    {
+      attempts: 3,
+      baseDelay: 1_000,
+      shouldRetry: isNetworkTransient,
+      label: "resend:send-po-email",
+    }
+  );
 
     // Mark as sent
     await supabase

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { stripe, PLANS } from "@/lib/stripe";
 import { parseBody, checkoutSchema } from "@/lib/validation";
 import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
+import { stripeIdempotencyKey, stripeCustomerKey } from "@/lib/idempotency";
 import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 
@@ -34,10 +35,10 @@ export async function POST(request: Request) {
   let customerId = profile?.stripe_customer_id;
 
   if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: user.email,
-      metadata: { supabase_user_id: user.id },
-    });
+    const customer = await stripe.customers.create(
+      { email: user.email, metadata: { supabase_user_id: user.id } },
+      { idempotencyKey: stripeCustomerKey(user.id) }
+    );
     customerId = customer.id;
 
     await supabase
@@ -49,6 +50,7 @@ export async function POST(request: Request) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
 
   const session = await stripe.checkout.sessions.create({
+    // Idempotency: same user + plan within the same day returns existing session
     customer: customerId,
     mode: "subscription",
     payment_method_types: ["card"],
@@ -59,7 +61,7 @@ export async function POST(request: Request) {
     subscription_data: {
       metadata: { supabase_user_id: user.id, plan },
     },
-  });
+  }, { idempotencyKey: stripeIdempotencyKey(user.id, plan) });
 
   logger.info("Checkout session created", { user_id: user.id, plan, session_id: session.id });
   return NextResponse.json({ url: session.url });
