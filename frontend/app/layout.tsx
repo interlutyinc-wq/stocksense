@@ -16,20 +16,20 @@ const dmMono = DM_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "StockSense — AI Supply Chain Agent for Shopify",
+  title: "StockSense — The AI Agent for Supply Chain Management",
   description:
-    "StockSense is an AI agent that manages supply chains autonomously. It analyzes your Shopify inventory, reasons through stock levels, matches suppliers, and sends purchase orders automatically. Not a dashboard — an agent that acts.",
+    "StockSense is the AI agent attacking supply chain management. It reasons through your inventory data, matches suppliers, and sends purchase orders automatically. Not a dashboard, not a tool — an agent that thinks and acts.",
   keywords: [
-    "AI inventory management",
-    "Shopify inventory agent",
-    "supply chain AI",
-    "automated purchase orders",
-    "AI reorder tool",
-    "Shopify supplier management",
-    "inventory optimization AI",
-    "dropshipping automation",
     "AI supply chain agent",
-    "stockout prevention",
+    "supply chain management AI",
+    "automated purchase orders",
+    "AI inventory agent",
+    "supply chain automation",
+    "AI reorder agent",
+    "inventory AI agent",
+    "supply chain software",
+    "AI agent supply chain",
+    "stockout prevention AI",
   ],
   authors: [{ name: "Interluty Inc.", url: "https://stocksense-interlutyinc-wqs-projects.vercel.app" }],
   creator: "Interluty Inc.",

@@ -146,21 +146,21 @@ export function MarketingLanding() {
         <div className="hero-glow" />
         <div className="hero-glow2" />
 
-        <div className="hero-eyebrow">The first AI-native supply chain agent</div>
+        <div className="hero-eyebrow">The AI agent attacking supply chain management</div>
 
         <h1>
           Not a tool.
           <br />
           An <span className="accent">agent</span>
           <br />
-          that <span className="stroke">thinks.</span>
+          that <span className="stroke">acts.</span>
         </h1>
 
         <p className="hero-sub">
-          Every inventory tool tells you what&apos;s happening.{" "}
-          <strong>StockSense decides what to do about it.</strong> It reasons
-          through your data, understands your suppliers, and acts —
-          autonomously — before stockouts cost you money.
+          Every supply chain tool shows you dashboards and sends alerts.{" "}
+          <strong>StockSense reasons, decides, and acts.</strong> It analyzes
+          your inventory, matches your suppliers, and sends purchase orders
+          automatically — before stockouts cost you money.
         </p>
 
         <div className="hero-actions">

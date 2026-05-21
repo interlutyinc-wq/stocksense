@@ -3,9 +3,9 @@ import { MarketingLanding } from "./marketing-landing";
 import Script from "next/script";
 
 export const metadata: Metadata = {
-  title: "StockSense — AI Supply Chain Agent for Shopify | Automated Purchase Orders",
+  title: "StockSense — The AI Agent for Supply Chain Management",
   description:
-    "StockSense is the first AI-native supply chain agent for Shopify merchants. It analyzes live inventory, reasons through stock levels, matches suppliers, and sends purchase orders automatically. Starting at $49/month.",
+    "StockSense is the AI agent attacking supply chain management. Reasons through inventory data, matches suppliers, sends purchase orders automatically. Not a dashboard — an agent that thinks and acts. Starting at $49/month.",
   alternates: {
     canonical: "https://stocksense-interlutyinc-wqs-projects.vercel.app/marketing",
   },

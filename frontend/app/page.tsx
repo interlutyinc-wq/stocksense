@@ -62,16 +62,16 @@ export default function Home() {
       <main className="relative z-10 flex flex-1 flex-col justify-center px-6 py-20 md:px-12">
         <p className="mb-8 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.25em] text-ss-accent">
           <span className="h-px w-7 bg-ss-accent" aria-hidden />
-          Your AI supply chain agent
+          The AI agent for supply chain management
         </p>
         <h1 className="max-w-4xl font-sans text-5xl font-extrabold leading-[0.92] tracking-[-0.04em] text-ss-cream md:text-7xl">
           Not a tool.{" "}
-          <span className="text-ss-accent">An agent</span> that thinks.
+          <span className="text-ss-accent">An agent</span> that acts.
         </h1>
         <p className="mt-8 max-w-lg font-mono text-sm leading-relaxed text-ss-cream/55">
-          StockSense reasons through your Shopify data, understands your
-          suppliers, and prepares reorder recommendations you can approve—
-          with full explanations in plain language.
+          StockSense reasons through your inventory data, understands your
+          suppliers, and sends purchase orders automatically —
+          with full plain-language explanations for every decision.
         </p>
         <div className="mt-12 flex flex-wrap items-center gap-4">
           <Link
