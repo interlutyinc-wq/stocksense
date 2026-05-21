@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { getLimits } from "@/lib/plans";
+import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import type { Recommendation } from "@/app/api/agent/analyze/route";
 
@@ -260,7 +262,14 @@ async function executeTool(
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 
-export async function POST() {
+export async function POST(request: Request) {
+  // Rate limit: 5 analyses per minute per user/IP
+  const rl = await rateLimit(request, RATE_LIMITS.analyze);
+  if (!rl.success) {
+    logger.warn("Rate limit exceeded", { route: "agent:stream", identifier: rl.identifier });
+    return rateLimitResponse(rl);
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

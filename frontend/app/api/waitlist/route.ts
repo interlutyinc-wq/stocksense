@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { parseBody, waitlistSchema } from "@/lib/validation";
+import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 
 const corsHeaders: Record<string, string> = {
@@ -17,6 +19,9 @@ export async function OPTIONS() {
 }
 
 export async function POST(request: Request) {
+  const rl = await rateLimit(request, RATE_LIMITS.waitlist);
+  if (!rl.success) return rateLimitResponse(rl);
+
   const parsed = await parseBody(request, waitlistSchema);
   if (parsed.error) return json({ error: "Valid email required" }, 400);
   const { email } = parsed.data;

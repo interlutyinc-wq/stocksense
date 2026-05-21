@@ -1,5 +1,6 @@
 import { stripe } from "@/lib/stripe";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 
@@ -24,6 +25,7 @@ async function updateUserPlan(
     .from("profiles")
     .update({ plan, stripe_subscription_id: subscriptionId })
     .eq("id", supabaseUserId);
+  logger.info("User plan updated", { user_id: supabaseUserId, plan, subscription_id: subscriptionId });
 }
 
 export async function POST(request: Request) {

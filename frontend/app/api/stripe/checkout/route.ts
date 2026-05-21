@@ -1,9 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { stripe, PLANS } from "@/lib/stripe";
 import { parseBody, checkoutSchema } from "@/lib/validation";
+import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
+  const rl = await rateLimit(request, RATE_LIMITS.checkout);
+  if (!rl.success) return rateLimitResponse(rl);
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -56,5 +61,6 @@ export async function POST(request: Request) {
     },
   });
 
+  logger.info("Checkout session created", { user_id: user.id, plan, session_id: session.id });
   return NextResponse.json({ url: session.url });
 }

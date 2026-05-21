@@ -2,9 +2,14 @@ import { createClient } from "@/lib/supabase/server";
 import { sendPOEmail } from "@/lib/email";
 import { getLimits } from "@/lib/plans";
 import { parseBody, sendPOSchema } from "@/lib/validation";
+import { rateLimit, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
+import { logger } from "@/lib/logger";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
+  const rl = await rateLimit(request, RATE_LIMITS.sendPO);
+  if (!rl.success) return rateLimitResponse(rl);
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -83,6 +88,14 @@ export async function POST(request: Request) {
       .from("purchase_orders")
       .update({ status: "sent", sent_at: new Date().toISOString() })
       .eq("id", po.id);
+
+    logger.info("Purchase order sent", {
+      user_id: user.id,
+      po_id: po.id,
+      supplier: supplierName,
+      sku,
+      quantity,
+    });
 
     return NextResponse.json({ ok: true, poId: po.id });
   } catch (err) {
