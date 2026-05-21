@@ -50,8 +50,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "StockSense — AI Supply Chain Agent",
-    description: "Not a dashboard. An AI agent that manages your supply chain autonomously.",
+    title: "StockSense — The AI Agent for Supply Chain Management",
+    description: "Not a dashboard. An AI agent that reasons, decides, and acts.",
+    images: ["https://stocksense-interlutyinc-wqs-projects.vercel.app/opengraph-image"],
   },
 };
 
