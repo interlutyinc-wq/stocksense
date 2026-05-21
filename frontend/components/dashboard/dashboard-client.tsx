@@ -6,6 +6,12 @@ import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { AnalysisResult, Recommendation } from "@/app/api/agent/analyze/route";
 
+// Extended result type — includes graceful degradation fields from the stream route
+type StreamAnalysisResult = AnalysisResult & {
+  from_cache?: boolean;
+  cached_at?: string;
+};
+
 type Supplier = {
   id: string;
   name: string;
@@ -74,7 +80,7 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
   const supabase = useMemo(() => createClient(), []);
 
   const [analyzing, setAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<StreamAnalysisResult | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [agentLog, setAgentLog] = useState<{ type: string; message: string; tool?: string }[]>([]);
   const [model, setModel] = useState<BusinessModel>(initialModel);
@@ -193,7 +199,7 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
                 setAgentLog(prev => [...prev, { type: "tool_result", message: event.message ?? "", tool: event.tool }]);
                 break;
               case "agent:complete":
-                if (event.result) setAnalysisResult(event.result);
+                if (event.result) setAnalysisResult(event.result as StreamAnalysisResult);
                 break;
               case "agent:error":
                 setAnalysisError(event.message ?? "Analysis failed.");
@@ -507,6 +513,34 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
             </div>
           )}
 
+          {analysisResult?.from_cache && (
+            <div
+              role="status"
+              className="mb-4 border border-yellow-500/30 bg-yellow-500/5 px-4 py-3 flex items-center gap-3"
+            >
+              <span className="shrink-0 text-yellow-400" aria-hidden>⚠</span>
+              <p className="font-mono text-[11px] leading-relaxed text-yellow-400/90">
+                Live agent temporarily unavailable — showing last saved analysis from{" "}
+                <strong className="text-yellow-300">
+                  {analysisResult.cached_at
+                    ? new Date(analysisResult.cached_at).toLocaleString("en-GB", {
+                        day: "numeric", month: "short", year: "numeric",
+                        hour: "2-digit", minute: "2-digit",
+                      })
+                    : "a previous session"}
+                </strong>.{" "}
+                <button
+                  type="button"
+                  onClick={() => void handleAnalyze()}
+                  className="underline underline-offset-2 hover:text-yellow-200 disabled:opacity-50"
+                  disabled={analyzing}
+                >
+                  Retry live analysis →
+                </button>
+              </p>
+            </div>
+          )}
+
           {analysisResult?.sku_limit_applied && (
             <div className="mb-4 border border-ss-accent/30 bg-ss-accent/5 px-4 py-3 flex items-center justify-between gap-4">
               <p className="font-mono text-xs text-ss-accent/90">
@@ -540,8 +574,8 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
               <div>
                 {/* Summary banner */}
                 <div className="border-b border-white/[0.06] px-6 py-4">
-                  <p className="font-mono text-[10px] uppercase tracking-wider text-ss-accent">
-                    → Analysis complete ·{" "}
+                  <p className={`font-mono text-[10px] uppercase tracking-wider ${analysisResult.from_cache ? "text-yellow-400" : "text-ss-accent"}`}>
+                    {analysisResult.from_cache ? "⚠ Cached analysis · " : "→ Analysis complete · "}
                     {new Date(analysisResult.analyzed_at).toLocaleTimeString()}
                   </p>
                   <p className="mt-1 font-mono text-sm leading-relaxed text-ss-cream/80">

@@ -28,6 +28,10 @@ interface AgentStreamResult {
   analyzed_at: string;
   sku_limit_applied?: boolean;
   total_skus_in_store?: number;
+  /** True when the result was loaded from analysis_history (agent failed). */
+  from_cache?: boolean;
+  /** ISO timestamp of when the cached analysis was originally created. */
+  cached_at?: string;
 }
 
 // ── Inventory types ───────────────────────────────────────────────────────────
@@ -57,6 +61,38 @@ interface ShopifyProduct {
     inventory_quantity: number | null;
     inventory_management: string | null;
   }[];
+}
+
+// ── Graceful degradation: load last saved analysis ────────────────────────────
+
+async function fetchLastAnalysis(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  shopDomain: string,
+): Promise<AgentStreamResult | null> {
+  const { data, error } = await supabase
+    .from("analysis_history")
+    .select("summary, recommendations, total_skus, critical_count, created_at, shop_domain")
+    .eq("user_id", userId)
+    .eq("shop_domain", shopDomain)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return null;
+
+  const recs = (data.recommendations ?? []) as Recommendation[];
+
+  return {
+    summary: data.summary ?? "",
+    recommendations: recs,
+    total_skus_analyzed: data.total_skus ?? recs.length,
+    items_needing_attention: data.critical_count ?? recs.filter(r => r.status === "critical" || r.status === "low").length,
+    shop_domain: data.shop_domain ?? shopDomain,
+    analyzed_at: data.created_at,
+    from_cache: true,
+    cached_at: data.created_at,
+  };
 }
 
 // ── Tool definitions (same as analyze route) ──────────────────────────────────
@@ -454,7 +490,14 @@ Use tools to gather real data, then provide recommendations.`,
         const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
 
         if (!jsonMatch) {
-          emit({ type: "agent:error", message: "Agent could not generate recommendations. Please retry.", code: "PARSE_ERROR" });
+          // Graceful degradation — serve last saved analysis before surfacing error
+          const cached = await fetchLastAnalysis(supabase, user.id, conn.shop_domain);
+          if (cached) {
+            emit({ type: "agent:thinking", message: "Live analysis unavailable — loading last saved analysis..." });
+            emit({ type: "agent:complete", result: cached });
+          } else {
+            emit({ type: "agent:error", message: "Agent could not generate recommendations. Please retry.", code: "PARSE_ERROR" });
+          }
           controller.close();
           return;
         }
@@ -483,11 +526,40 @@ Use tools to gather real data, then provide recommendations.`,
         });
 
       } catch (err) {
-        emit({
-          type: "agent:error",
-          message: err instanceof Error ? err.message : "Unexpected error. Please retry.",
-          code: "INTERNAL_ERROR",
+        logger.error("Agent stream fatal error", {
+          user_id: user.id,
+          error: err instanceof Error ? err.message : String(err),
         });
+
+        // Graceful degradation — attempt to serve last saved analysis
+        let degraded = false;
+        try {
+          const { data: conn } = await supabase
+            .from("shopify_connections")
+            .select("shop_domain")
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (conn?.shop_domain) {
+            const cached = await fetchLastAnalysis(supabase, user.id, conn.shop_domain);
+            if (cached) {
+              emit({ type: "agent:thinking", message: "Live agent encountered an error — loading last saved analysis..." });
+              emit({ type: "agent:complete", result: cached });
+              degraded = true;
+            }
+          }
+        } catch {
+          // Best-effort — if degradation itself fails, fall through to error
+        }
+
+        if (!degraded) {
+          emit({
+            type: "agent:error",
+            message: err instanceof Error ? err.message : "Unexpected error. Please retry.",
+            code: "INTERNAL_ERROR",
+          });
+        }
       } finally {
         controller.close();
       }
