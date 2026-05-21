@@ -76,6 +76,7 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [agentLog, setAgentLog] = useState<{ type: string; message: string; tool?: string }[]>([]);
   const [model, setModel] = useState<BusinessModel>(initialModel);
   const [savingModel, setSavingModel] = useState(false);
   const [checkoutBusy, setCheckoutBusy] = useState<string | null>(null);
@@ -145,17 +146,67 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
   async function handleAnalyze() {
     setAnalyzing(true);
     setAnalysisError(null);
+    setAgentLog([]);
+    setAnalysisResult(null);
 
     try {
-      const res = await fetch("/api/agent/analyze", { method: "POST" });
-      const data = (await res.json()) as AnalysisResult & { error?: string };
+      const res = await fetch("/api/agent/stream", { method: "POST" });
 
-      if (!res.ok || data.error) {
-        setAnalysisError(data.error ?? "Analysis failed. Please try again.");
+      if (!res.ok || !res.body) {
+        const err = await res.json().catch(() => ({ error: "Analysis failed." })) as { error?: string };
+        setAnalysisError(err.error ?? "Analysis failed. Please try again.");
         return;
       }
 
-      setAnalysisResult(data);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const event = JSON.parse(line.slice(6)) as {
+              type: string;
+              message?: string;
+              tool?: string;
+              result?: AnalysisResult;
+              code?: string;
+            };
+
+            switch (event.type) {
+              case "agent:start":
+              case "agent:thinking":
+                setAgentLog(prev => [...prev, { type: "thinking", message: event.message ?? "" }]);
+                break;
+              case "agent:tool_call":
+                setAgentLog(prev => [...prev, { type: "tool_call", message: event.message ?? "", tool: event.tool }]);
+                break;
+              case "agent:tool_result":
+                setAgentLog(prev => [...prev, { type: "tool_result", message: event.message ?? "", tool: event.tool }]);
+                break;
+              case "agent:complete":
+                if (event.result) setAnalysisResult(event.result);
+                break;
+              case "agent:error":
+                setAnalysisError(event.message ?? "Analysis failed.");
+                if (event.code === "LIMIT_REACHED") {
+                  setAnalysisError("Monthly analysis limit reached. Upgrade to continue.");
+                }
+                break;
+            }
+          } catch {
+            // Skip malformed events
+          }
+        }
+      }
     } catch {
       setAnalysisError("Network error. Please try again.");
     } finally {
@@ -375,11 +426,41 @@ export function DashboardClient({ userEmail, shopDomain, suppliers, businessMode
               )}
             </div>
 
-            {analyzing && (
-              <div className="mt-6 border border-ss-accent/20 bg-ss-accent/5 px-4 py-3">
-                <p className="font-mono text-xs text-ss-accent/80">
-                  ⟳ Fetching Shopify inventory · Reasoning through data · Generating recommendations…
-                </p>
+            {(analyzing || agentLog.length > 0) && (
+              <div className="mt-6 border border-white/[0.06] bg-ss-black/60">
+                <div className="flex items-center gap-2 border-b border-white/[0.04] px-4 py-2">
+                  {analyzing && <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-ss-accent" />}
+                  <span className="font-mono text-[10px] uppercase tracking-wider text-ss-muted">
+                    Agent reasoning
+                  </span>
+                </div>
+                <div className="max-h-52 overflow-y-auto px-4 py-3 space-y-1.5">
+                  {agentLog.map((entry, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <span className="shrink-0 font-mono text-[10px] mt-0.5">
+                        {entry.type === "tool_call"
+                          ? <span className="text-ss-accent">→</span>
+                          : entry.type === "tool_result"
+                          ? <span className="text-ss-green">✓</span>
+                          : <span className="text-ss-muted">·</span>}
+                      </span>
+                      <p className="font-mono text-[11px] leading-relaxed text-ss-cream/70">
+                        {entry.tool && (
+                          <span className="mr-1.5 border border-white/[0.08] px-1.5 py-0.5 text-[9px] text-ss-muted">
+                            {entry.tool}
+                          </span>
+                        )}
+                        {entry.message}
+                      </p>
+                    </div>
+                  ))}
+                  {analyzing && (
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] text-ss-muted">·</span>
+                      <span className="font-mono text-[11px] text-ss-muted animate-pulse">Processing…</span>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
