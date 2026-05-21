@@ -5,32 +5,6 @@ import { NextResponse } from "next/server";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface ShopifyVariant {
-  id: number;
-  sku: string | null;
-  title: string;
-  price: string;
-  inventory_quantity: number | null;
-  inventory_management: string | null;
-}
-
-interface ShopifyProduct {
-  id: number;
-  title: string;
-  status: string;
-  variants: ShopifyVariant[];
-}
-
-interface ShopifyProductsResponse {
-  products: ShopifyProduct[];
-}
-
-interface SupplierRow {
-  name: string;
-  email: string;
-  skus: string[];
-}
-
 export interface Recommendation {
   sku: string;
   product: string;
@@ -57,218 +31,292 @@ export interface AnalysisResult {
   total_skus_in_store?: number;
 }
 
-// ── Route handler ──────────────────────────────────────────────────────────────
+// ── Tool definitions ──────────────────────────────────────────────────────────
 
-type BusinessModel = "inventory" | "dropshipping" | "hybrid";
+const tools: Anthropic.Tool[] = [
+  {
+    name: "get_inventory",
+    description: "Fetch current inventory levels for all products from the connected store.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        limit: { type: "number", description: "Max SKUs to fetch (default: all)" },
+      },
+      required: [],
+    },
+  },
+  {
+    name: "get_sales_velocity",
+    description: "Calculate daily sales velocity for a SKU based on order history.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        sku: { type: "string", description: "The SKU to analyze" },
+        days: { type: "number", description: "Number of days to look back (default: 30)" },
+      },
+      required: ["sku"],
+    },
+  },
+  {
+    name: "get_supplier_history",
+    description: "Get historical PO data and real lead times for a supplier.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        supplier_name: { type: "string", description: "Supplier name" },
+      },
+      required: ["supplier_name"],
+    },
+  },
+  {
+    name: "get_supplier_list",
+    description: "Get all registered suppliers with their SKU mappings.",
+    input_schema: {
+      type: "object" as const,
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: "save_analysis",
+    description: "Save the completed analysis to memory for future reference.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        summary: { type: "string" },
+        recommendations: { type: "array", items: { type: "object" } },
+        total_skus: { type: "number" },
+        critical_count: { type: "number" },
+      },
+      required: ["summary", "recommendations", "total_skus", "critical_count"],
+    },
+  },
+];
 
-function buildPrompts(
-  model: BusinessModel,
-  shopDomain: string,
-  inventoryItems: object[],
-  supplierList: object[],
-): { system: string; user: string } {
-  const base = `You are StockSense, an AI-native supply chain agent for e-commerce merchants.
+// ── Tool executor ─────────────────────────────────────────────────────────────
+
+async function executeTool(
+  toolName: string,
+  toolInput: Record<string, unknown>,
+  context: {
+    supabase: Awaited<ReturnType<typeof createClient>>;
+    userId: string;
+    shopDomain: string;
+    accessToken: string;
+    skuLimit: number;
+    allInventory: InventoryItem[];
+    suppliers: SupplierRow[];
+  }
+): Promise<string> {
+  const { supabase, userId, shopDomain, accessToken, skuLimit, allInventory, suppliers } = context;
+
+  switch (toolName) {
+    case "get_inventory": {
+      const limit = (toolInput.limit as number) ?? skuLimit;
+      const items = limit === -1 ? allInventory : allInventory.slice(0, limit);
+      return JSON.stringify({ items, total: allInventory.length, shown: items.length });
+    }
+
+    case "get_sales_velocity": {
+      const sku = toolInput.sku as string;
+      const days = (toolInput.days as number) ?? 30;
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+
+      // Fetch order history from Shopify
+      try {
+        const res = await fetch(
+          `https://${shopDomain}/admin/api/2024-01/orders.json?status=any&created_at_min=${since.toISOString()}&limit=250&fields=line_items`,
+          { headers: { "X-Shopify-Access-Token": accessToken } }
+        );
+        if (!res.ok) return JSON.stringify({ sku, daily_velocity: 0, error: "Could not fetch orders" });
+
+        const data = await res.json() as { orders: { line_items: { sku: string; quantity: number }[] }[] };
+        let totalSold = 0;
+        for (const order of data.orders ?? []) {
+          for (const item of order.line_items ?? []) {
+            if (item.sku === sku) totalSold += item.quantity;
+          }
+        }
+        const velocity = Math.round((totalSold / days) * 100) / 100;
+        return JSON.stringify({ sku, daily_velocity: velocity, total_sold: totalSold, period_days: days });
+      } catch {
+        return JSON.stringify({ sku, daily_velocity: 0, error: "Network error" });
+      }
+    }
+
+    case "get_supplier_history": {
+      const supplierName = toolInput.supplier_name as string;
+      const { data: pos } = await supabase
+        .from("purchase_orders")
+        .select("sku, quantity, created_at, sent_at, status")
+        .eq("user_id", userId)
+        .eq("supplier_name", supplierName)
+        .order("created_at", { ascending: false })
+        .limit(20);
+
+      const { data: metrics } = await supabase
+        .from("supplier_metrics")
+        .select("avg_lead_days, reliability_score, total_pos")
+        .eq("user_id", userId)
+        .eq("supplier_name", supplierName)
+        .maybeSingle();
+
+      return JSON.stringify({
+        supplier: supplierName,
+        past_orders: pos ?? [],
+        metrics: metrics ?? { avg_lead_days: null, reliability_score: null, total_pos: 0 },
+      });
+    }
+
+    case "get_supplier_list": {
+      return JSON.stringify({ suppliers });
+    }
+
+    case "save_analysis": {
+      await supabase.from("analysis_history").insert({
+        user_id: userId,
+        shop_domain: shopDomain,
+        recommendations: toolInput.recommendations as Record<string, unknown>[],
+        total_skus: toolInput.total_skus as number,
+        critical_count: toolInput.critical_count as number,
+        summary: toolInput.summary as string,
+      });
+      return JSON.stringify({ saved: true });
+    }
+
+    default:
+      return JSON.stringify({ error: `Unknown tool: ${toolName}` });
+  }
+}
+
+// ── Inventory item type ───────────────────────────────────────────────────────
+
+interface InventoryItem {
+  product: string;
+  sku: string;
+  variant: string | null;
+  stock: number;
+  price: string;
+}
+
+interface SupplierRow {
+  name: string;
+  email: string;
+  skus: string[];
+}
+
+interface ShopifyProduct {
+  id: number;
+  title: string;
+  variants: {
+    id: number;
+    sku: string | null;
+    title: string;
+    price: string;
+    inventory_quantity: number | null;
+    inventory_management: string | null;
+  }[];
+}
+
+// ── System prompt by business model ──────────────────────────────────────────
+
+function getSystemPrompt(model: string, shopDomain: string): string {
+  const base = `You are StockSense, an AI agent for supply chain management.
+You have access to tools to analyze inventory, sales velocity, and supplier history.
+Use tools to gather real data before making recommendations.
 Always explain your reasoning in plain language. Be specific and actionable.
-Return ONLY valid JSON — no markdown, no code fences, no preamble.`;
-
-  if (model === "dropshipping") {
-    return {
-      system: `${base}
-This merchant uses DROPSHIPPING — they never hold physical stock. Their supplier fulfills orders directly.
-Negative stock = overselling (orders placed beyond available supplier stock).
-Focus on: sales velocity, best sellers, fulfillment risk, products to pause or scale.
-Do NOT recommend traditional "reorder quantities" — instead recommend actions like "pause listings", "increase marketing", "verify supplier availability".`,
-      user: `Analyze the dropshipping catalog below for "${shopDomain}".
-
-PRODUCTS (${inventoryItems.length} SKUs):
-${JSON.stringify(inventoryItems, null, 2)}
-
-SUPPLIERS (${supplierList.length} registered):
-${JSON.stringify(supplierList, null, 2)}
-
-Rules:
-- status "critical" = stock ≤ 0 (risk of fulfillment failure — supplier may be out of stock)
-- status "low" = stock 1–10 (monitor closely)
-- status "ok" = stock > 10
-- Negative stock values mean the merchant is overselling — flag as critical
-- reorder_qty field = 0 for dropshipping (supplier fulfills on demand)
-- Use reasoning to explain whether to pause the listing, contact the supplier, or scale marketing
-
-Return this exact JSON:
+When you have enough data, use save_analysis to store your findings.
+Return your final answer as a JSON object with this structure:
 {
-  "summary": "Overview of dropshipping catalog health and fulfillment risks",
+  "summary": "1-2 sentence overview",
   "recommendations": [
     {
-      "sku": "SKU",
-      "product": "Product name",
-      "current_stock": 0,
-      "daily_velocity": 0,
-      "days_remaining": 0,
-      "status": "critical",
-      "urgency": "critical",
-      "supplier": "Supplier name or null",
-      "supplier_email": "email or null",
-      "reorder_qty": 0,
-      "estimated_cost": null,
-      "reasoning": "Action to take: pause listing / contact supplier / scale marketing"
+      "sku": "string",
+      "product": "string",
+      "current_stock": number,
+      "daily_velocity": number,
+      "days_remaining": number,
+      "status": "critical|low|ok",
+      "urgency": "critical|high|medium|low",
+      "supplier": "string or null",
+      "supplier_email": "string or null",
+      "reorder_qty": number,
+      "estimated_cost": number or null,
+      "reasoning": "plain language explanation"
     }
   ],
-  "total_skus_analyzed": ${inventoryItems.length},
-  "items_needing_attention": 0
-}`,
-    };
+  "total_skus_analyzed": number,
+  "items_needing_attention": number
+}`;
+
+  if (model === "dropshipping") {
+    return `${base}
+
+This merchant uses DROPSHIPPING. Never hold physical stock.
+Negative stock = overselling risk. Focus on fulfillment risk and velocity.
+reorder_qty = 0 for dropshipping. Recommend actions: pause listing, contact supplier, scale marketing.`;
   }
 
   if (model === "hybrid") {
-    return {
-      system: `${base}
-This merchant uses a HYBRID model — some products are held in own stock, others are dropshipped.
-Apply inventory reorder logic to own-stock products and fulfillment-risk logic to dropshipped ones.
-Distinguish based on whether the product has a matched supplier SKU.`,
-      user: `Analyze the hybrid inventory below for "${shopDomain}".
+    return `${base}
 
-PRODUCTS (${inventoryItems.length} SKUs):
-${JSON.stringify(inventoryItems, null, 2)}
-
-SUPPLIERS (${supplierList.length} registered):
-${JSON.stringify(supplierList, null, 2)}
-
-Rules:
-- If a SKU matches a supplier's SKU list → treat as OWN STOCK: recommend reorder quantities
-- If no supplier match → treat as DROPSHIPPING: focus on fulfillment risk
-- status "critical" = stock ≤ 5 or negative
-- status "low" = stock 6–20
-- status "ok" = stock > 20
-
-Return this exact JSON:
-{
-  "summary": "Overview combining stock reorder needs and dropshipping fulfillment risks",
-  "recommendations": [
-    {
-      "sku": "SKU",
-      "product": "Product name",
-      "current_stock": 0,
-      "daily_velocity": 0,
-      "days_remaining": 0,
-      "status": "critical",
-      "urgency": "critical",
-      "supplier": "Supplier name or null",
-      "supplier_email": "email or null",
-      "reorder_qty": 0,
-      "estimated_cost": null,
-      "reasoning": "Plain-language action recommendation"
-    }
-  ],
-  "total_skus_analyzed": ${inventoryItems.length},
-  "items_needing_attention": 0
-}`,
-    };
+HYBRID model: some products are own-stock, others are dropshipped.
+Match SKUs to supplier list to determine which model applies per product.`;
   }
 
-  // Default: inventory
-  return {
-    system: `${base}
-This merchant holds PHYSICAL INVENTORY and reorders from suppliers.
-Focus on stock levels, reorder points, and supplier lead times.
-Estimate daily_velocity from current stock context (if stock is very low relative to product type, assume higher velocity).
-days_remaining = current_stock / daily_velocity (round to integer, min 0).
-urgency: "critical" = days_remaining ≤ 3, "high" = 4–7 days, "medium" = 8–14 days, "low" = 15+ days.
-estimated_cost = reorder_qty × price if price is known, else null.
-Recommend specific reorder quantities sufficient for ~60 days of demand.`,
-    user: `Analyze the inventory below for "${shopDomain}".
+  return `${base}
 
-INVENTORY (${inventoryItems.length} SKUs):
-${JSON.stringify(inventoryItems, null, 2)}
-
-SUPPLIERS (${supplierList.length} registered):
-${JSON.stringify(supplierList, null, 2)}
-
-Rules:
-- status "critical" = stock ≤ 5 units or out of stock
-- status "low" = stock 6–20 units
-- status "ok" = stock > 20 units
-- Match each SKU to the supplier whose skus[] array contains that SKU; if no match, supplier is null
-- reorder_qty should cover ~60 days of estimated demand at the estimated daily velocity
-
-Return this exact JSON:
-{
-  "summary": "Overview of inventory health and urgent reorder needs",
-  "recommendations": [
-    {
-      "sku": "SKU",
-      "product": "Product name",
-      "current_stock": 0,
-      "daily_velocity": 0.5,
-      "days_remaining": 10,
-      "status": "critical",
-      "urgency": "critical",
-      "supplier": "Supplier name or null",
-      "supplier_email": "email or null",
-      "reorder_qty": 100,
-      "estimated_cost": 450.00,
-      "reasoning": "Plain-language explanation covering velocity, days remaining, and why this quantity"
-    }
-  ],
-  "total_skus_analyzed": ${inventoryItems.length},
-  "items_needing_attention": 0
-}`,
-  };
+This merchant holds PHYSICAL INVENTORY. Focus on:
+- urgency: critical = days_remaining ≤ 3, high = 4-7, medium = 8-14, low = 15+
+- reorder_qty = enough for ~60 days at current velocity
+- estimated_cost = reorder_qty × unit_price if known`;
 }
 
+// ── Route handler ─────────────────────────────────────────────────────────────
+
 export async function POST() {
-  // 1. Authenticate user
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // 2. Fetch business model from profile
+  // Profile + plan
   const { data: profile } = await supabase
     .from("profiles")
     .select("business_model, plan, analyses_count_month, analyses_reset_at")
     .eq("id", user.id)
     .maybeSingle();
 
-  const businessModel: BusinessModel =
-    (profile?.business_model as BusinessModel) ?? "inventory";
-
+  const businessModel = (profile?.business_model ?? "inventory") as string;
   const limits = getLimits(profile?.plan ?? "free");
 
-  // Free plan: enforce monthly analysis limit
+  // Monthly limit check
   if (limits.analysesPerMonth !== -1) {
     const now = new Date();
     const resetAt = new Date(profile?.analyses_reset_at ?? now);
-    const sameMonth = resetAt.getMonth() === now.getMonth() &&
-                      resetAt.getFullYear() === now.getFullYear();
+    const sameMonth = resetAt.getMonth() === now.getMonth() && resetAt.getFullYear() === now.getFullYear();
     const count = sameMonth ? (profile?.analyses_count_month ?? 0) : 0;
-
     if (count >= limits.analysesPerMonth) {
       return NextResponse.json(
         { error: "Monthly analysis limit reached. Upgrade to run unlimited analyses.", upgrade: true },
-        { status: 403 },
+        { status: 403 }
       );
     }
-
-    // Increment counter
     await supabase.from("profiles").update({
       analyses_count_month: sameMonth ? count + 1 : 1,
       analyses_reset_at: sameMonth ? profile?.analyses_reset_at : now.toISOString(),
     }).eq("id", user.id);
   }
 
-  // Free plan: enforce business model restriction
+  // Business model gate
   if (!limits.allBusinessModels && businessModel !== "inventory") {
     return NextResponse.json(
       { error: "Upgrade to Starter or higher to use dropshipping and hybrid models." },
-      { status: 403 },
+      { status: 403 }
     );
   }
 
-  // 3. Fetch Shopify connection
+  // Shopify connection
   const { data: shopifyConn } = await supabase
     .from("shopify_connections")
     .select("shop_domain, access_token")
@@ -277,140 +325,158 @@ export async function POST() {
     .maybeSingle();
 
   if (!shopifyConn) {
-    return NextResponse.json(
-      { error: "No Shopify store connected. Complete onboarding first." },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "No Shopify store connected." }, { status: 400 });
   }
 
-  // 4. Fetch suppliers
+  // Suppliers
   const { data: suppliers } = await supabase
     .from("suppliers")
     .select("name, email, skus")
     .order("created_at", { ascending: false });
 
-  // 5. Fetch Shopify inventory via Admin API
-  let shopifyProducts: ShopifyProduct[] = [];
+  // Fetch all inventory upfront (used by get_inventory tool)
+  let allInventory: InventoryItem[] = [];
   try {
-    const shopifyRes = await fetch(
+    const res = await fetch(
       `https://${shopifyConn.shop_domain}/admin/api/2024-01/products.json?limit=250&status=active`,
-      {
-        headers: {
-          "X-Shopify-Access-Token": shopifyConn.access_token,
-          "Content-Type": "application/json",
-        },
-      },
+      { headers: { "X-Shopify-Access-Token": shopifyConn.access_token } }
     );
-
-    if (!shopifyRes.ok) {
-      const errText = await shopifyRes.text();
-      console.error("Shopify API error:", shopifyRes.status, errText);
-      return NextResponse.json(
-        { error: "Failed to fetch Shopify inventory. Check store connection." },
-        { status: 502 },
+    if (res.ok) {
+      const data = await res.json() as { products: ShopifyProduct[] };
+      allInventory = (data.products ?? []).flatMap(p =>
+        p.variants
+          .filter(v => v.inventory_management === "shopify" || v.inventory_quantity !== null)
+          .map(v => ({
+            product: p.title,
+            sku: v.sku ?? `variant-${v.id}`,
+            variant: v.title !== "Default Title" ? v.title : null,
+            stock: v.inventory_quantity ?? 0,
+            price: v.price,
+          }))
       );
     }
-
-    const shopifyData = (await shopifyRes.json()) as ShopifyProductsResponse;
-    shopifyProducts = shopifyData.products ?? [];
-  } catch (err) {
-    console.error("Shopify fetch error:", err);
-    return NextResponse.json(
-      { error: "Network error fetching Shopify data." },
-      { status: 502 },
-    );
+  } catch {
+    return NextResponse.json({ error: "Failed to fetch Shopify inventory." }, { status: 502 });
   }
-
-  // 6. Build inventory summary — apply SKU limit for free/starter plans
-  const allInventoryItems = shopifyProducts.flatMap((p) =>
-    p.variants
-      .filter((v) => v.inventory_management === "shopify" || v.inventory_quantity !== null)
-      .map((v) => ({
-        product: p.title,
-        sku: v.sku ?? `variant-${v.id}`,
-        variant: v.title !== "Default Title" ? v.title : null,
-        stock: v.inventory_quantity ?? 0,
-        price: v.price,
-      })),
-  );
 
   const skuLimit = limits.maxSkus;
-  const inventoryItems = skuLimit === -1
-    ? allInventoryItems
-    : allInventoryItems.slice(0, skuLimit);
+  const skuLimitApplied = skuLimit !== -1 && allInventory.length > skuLimit;
 
-  const skuLimitApplied = skuLimit !== -1 && allInventoryItems.length > skuLimit;
-
-  const supplierList = (suppliers as SupplierRow[] ?? []).map((s) => ({
-    name: s.name,
-    email: s.email,
-    skus: s.skus,
-  }));
-
-  // 7. Call Claude API — prompt varies by business model
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: "AI engine not configured. Add ANTHROPIC_API_KEY to Vercel." },
-      { status: 503 },
-    );
-  }
+  if (!apiKey) return NextResponse.json({ error: "AI engine not configured." }, { status: 503 });
 
   const anthropic = new Anthropic({ apiKey });
-  const { system: systemPrompt, user: userPrompt } = buildPrompts(
-    businessModel,
-    shopifyConn.shop_domain,
-    inventoryItems,  // already sliced to plan limit
-    supplierList,
-  );
+  const toolContext = {
+    supabase,
+    userId: user.id,
+    shopDomain: shopifyConn.shop_domain,
+    accessToken: shopifyConn.access_token,
+    skuLimit,
+    allInventory,
+    suppliers: (suppliers ?? []) as SupplierRow[],
+  };
 
-  let analysisText = "";
-  try {
-    const message = await anthropic.messages.create({
+  // ── Agent loop with tool calling ──────────────────────────────────────────
+  const messages: Anthropic.MessageParam[] = [
+    {
+      role: "user",
+      content: `Analyze the inventory for store "${shopifyConn.shop_domain}".
+Business model: ${businessModel}.
+${skuLimit !== -1 ? `SKU limit for this plan: ${skuLimit} SKUs.` : "No SKU limit."}
+
+Steps:
+1. Use get_inventory to see current stock levels
+2. For critical/low SKUs, use get_sales_velocity to get real velocity data
+3. Use get_supplier_list to match SKUs to suppliers
+4. For known suppliers, use get_supplier_history to get real lead times
+5. Generate recommendations with full reasoning
+6. Use save_analysis to store your findings
+7. Return the final JSON analysis`,
+    },
+  ];
+
+  let finalText = "";
+  let iterations = 0;
+  const MAX_ITERATIONS = 10;
+
+  while (iterations < MAX_ITERATIONS) {
+    iterations++;
+
+    const response = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 4096,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
+      system: getSystemPrompt(businessModel, shopifyConn.shop_domain),
+      tools,
+      messages,
     });
 
-    const block = message.content[0];
-    if (block.type !== "text") {
-      throw new Error("Unexpected response type from Claude");
+    messages.push({ role: "assistant", content: response.content });
+
+    if (response.stop_reason === "end_turn") {
+      // Extract final text
+      for (const block of response.content) {
+        if (block.type === "text") {
+          finalText = block.text;
+        }
+      }
+      break;
     }
-    analysisText = block.text.trim();
-  } catch (err) {
-    console.error("Claude API error:", err);
-    return NextResponse.json(
-      { error: "AI analysis failed. Please try again." },
-      { status: 502 },
-    );
+
+    if (response.stop_reason === "tool_use") {
+      const toolResults: Anthropic.ToolResultBlockParam[] = [];
+
+      for (const block of response.content) {
+        if (block.type === "tool_use") {
+          const result = await executeTool(
+            block.name,
+            block.input as Record<string, unknown>,
+            toolContext
+          );
+          toolResults.push({
+            type: "tool_result",
+            tool_use_id: block.id,
+            content: result,
+          });
+        }
+      }
+
+      messages.push({ role: "user", content: toolResults });
+    }
   }
 
-  // 7. Parse and return
+  // Parse final JSON
   let result: Omit<AnalysisResult, "shop_domain" | "analyzed_at">;
   try {
-    // Strip potential markdown code fences just in case
-    const cleaned = analysisText
+    const cleaned = finalText
       .replace(/^```json\s*/i, "")
       .replace(/^```\s*/i, "")
       .replace(/\s*```$/i, "")
       .trim();
-    result = JSON.parse(cleaned) as typeof result;
-  } catch (err) {
-    console.error("JSON parse error:", err, "\nRaw:", analysisText);
-    return NextResponse.json(
-      { error: "Failed to parse AI response. Please retry." },
-      { status: 502 },
-    );
+
+    // Extract JSON from text if wrapped in explanation
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON found");
+    result = JSON.parse(jsonMatch[0]) as typeof result;
+  } catch {
+    return NextResponse.json({ error: "Failed to parse agent response. Please retry." }, { status: 502 });
   }
 
-  const finalResult: AnalysisResult = {
+  // Save inventory snapshot for future velocity calculations
+  if (allInventory.length > 0) {
+    const snapshots = allInventory.slice(0, 100).map(item => ({
+      user_id: user.id,
+      shop_domain: shopifyConn.shop_domain,
+      sku: item.sku,
+      stock_level: item.stock,
+    }));
+    await supabase.from("inventory_snapshots").insert(snapshots).then(() => {});
+  }
+
+  return NextResponse.json({
     ...result,
     shop_domain: shopifyConn.shop_domain,
     analyzed_at: new Date().toISOString(),
     sku_limit_applied: skuLimitApplied,
-    total_skus_in_store: allInventoryItems.length,
-  };
-
-  return NextResponse.json(finalResult);
+    total_skus_in_store: allInventory.length,
+  });
 }
