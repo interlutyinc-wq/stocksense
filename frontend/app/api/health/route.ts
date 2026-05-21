@@ -5,6 +5,8 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { shopifyBreaker, anthropicBreaker } from "@/lib/circuit-breaker";
+import { getCacheStats } from "@/lib/cache";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +27,11 @@ interface HealthResponse {
     ai_engine: ServiceStatus;
     email: ServiceStatus;
   };
+  circuit_breakers: {
+    shopify: ReturnType<typeof shopifyBreaker.getStatus>;
+    anthropic: ReturnType<typeof anthropicBreaker.getStatus>;
+  };
+  cache: ReturnType<typeof getCacheStats>;
   environment: string;
 }
 
@@ -82,6 +89,11 @@ export async function GET(): Promise<NextResponse<HealthResponse>> {
     timestamp: new Date().toISOString(),
     uptime_ms: Date.now() - START_TIME,
     services: { database, ai_engine: aiEngine, email },
+    circuit_breakers: {
+      shopify: shopifyBreaker.getStatus(),
+      anthropic: anthropicBreaker.getStatus(),
+    },
+    cache: getCacheStats(),
     environment: process.env.NODE_ENV ?? "production",
   };
 
