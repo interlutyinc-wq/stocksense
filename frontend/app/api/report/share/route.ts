@@ -1,14 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
+import { parseBody, shareReportSchema } from "@/lib/validation";
 import { NextResponse } from "next/server";
-import type { AnalysisResult } from "@/app/api/agent/analyze/route";
 
 export async function POST(request: Request) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { result } = (await request.json()) as { result: AnalysisResult };
-  if (!result) return NextResponse.json({ error: "No result provided" }, { status: 400 });
+  const parsed = await parseBody(request, shareReportSchema);
+  if (parsed.error) return parsed.error;
+  const { result } = parsed.data;
 
   const { data, error } = await supabase
     .from("shared_reports")

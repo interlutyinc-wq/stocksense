@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { stripe, PLANS, type StripePlanKey as PlanKey } from "@/lib/stripe";
+import { stripe, PLANS } from "@/lib/stripe";
+import { parseBody, checkoutSchema } from "@/lib/validation";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -10,7 +11,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { plan } = (await request.json()) as { plan: PlanKey };
+  const parsed = await parseBody(request, checkoutSchema);
+  if (parsed.error) return parsed.error;
+  const { plan } = parsed.data;
 
   if (!PLANS[plan]) {
     return NextResponse.json({ error: "Invalid plan" }, { status: 400 });

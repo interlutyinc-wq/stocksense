@@ -1,18 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { sendPOEmail } from "@/lib/email";
 import { getLimits } from "@/lib/plans";
+import { parseBody, sendPOSchema } from "@/lib/validation";
 import { NextResponse } from "next/server";
-
-interface PORequest {
-  supplierName: string;
-  supplierEmail: string;
-  productName: string;
-  sku: string;
-  quantity: number;
-  estimatedCost: number | null;
-  urgency: string;
-  reasoning: string;
-}
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -37,12 +27,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = (await request.json()) as PORequest;
-  const { supplierName, supplierEmail, productName, sku, quantity, estimatedCost, urgency, reasoning } = body;
-
-  if (!supplierEmail || !productName || !sku || !quantity) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-  }
+  const parsed = await parseBody(request, sendPOSchema);
+  if (parsed.error) return parsed.error;
+  const { supplierName, supplierEmail, productName, sku, quantity, estimatedCost, urgency, reasoning } = parsed.data;
 
   // Find supplier_id if exists
   const { data: supplier } = await supabase
