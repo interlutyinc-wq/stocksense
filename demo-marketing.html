@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>StockSense — The inventory agent that acts, not just alerts.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+::selection{background:#ff4d1c33;color:#f0ede8}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:#050505;
+  color:#f0ede8;
+  min-height:100vh;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit;text-decoration:none}
+
+/* ── Buttons ── */
+.ss-btn-primary{
+  background:#ff4d1c;color:#fff;border:none;
+  padding:12px 28px;border-radius:6px;
+  font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;
+  cursor:pointer;transition:all .2s;letter-spacing:.01em;
+}
+.ss-btn-primary:hover{background:#e63d0d;transform:translateY(-1px);box-shadow:0 8px 24px #ff4d1c33}
+.ss-btn-ghost{
+  background:transparent;color:#f0ede8;
+  border:1px solid #2a2a2a;padding:11px 24px;border-radius:6px;
+  font-family:'DM Sans',sans-serif;font-size:14px;font-weight:400;
+  cursor:pointer;transition:all .2s;
+}
+.ss-btn-ghost:hover{border-color:#555;background:#111}
+
+/* ── Animations ── */
+.fade-up{opacity:0;transform:translateY(24px);animation:fadeUp .7s forwards}
+@keyframes fadeUp{to{opacity:1;transform:translateY(0)}}
+
+.ticker-track{
+  display:flex;gap:48px;
+  animation:ticker 24s linear infinite;
+  white-space:nowrap;
+}
+@keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Cards ── */
+.step-card{
+  border:1px solid #1a1a1a;border-radius:12px;padding:32px;
+  transition:all .3s;cursor:pointer;background:#0a0a0a;
+}
+.step-card:hover,.step-card.active{border-color:#ff4d1c44;background:#0f0f0f}
+.step-card.active{border-color:#ff4d1c66}
+
+.plan-card{
+  border:1px solid #1a1a1a;border-radius:12px;padding:32px;
+  background:#0a0a0a;transition:all .3s;position:relative;
+}
+.plan-card:hover{border-color:#333;transform:translateY(-2px)}
+.plan-card.featured{border-color:#ff4d1c66;background:#0f0a09}
+
+/* ── Hamburger ── */
+.hamburger{
+  display:none;flex-direction:column;justify-content:center;gap:5px;
+  width:36px;height:36px;background:none;border:none;cursor:pointer;padding:4px;
+}
+.hamburger span{
+  display:block;height:1.5px;background:#f0ede8;border-radius:2px;
+  transition:all .25s;transform-origin:center;
+}
+.hamburger.open span:nth-child(1){transform:translateY(6.5px) rotate(45deg)}
+.hamburger.open span:nth-child(2){opacity:0}
+.hamburger.open span:nth-child(3){transform:translateY(-6.5px) rotate(-45deg)}
+
+.mobile-menu{
+  display:none;position:fixed;top:64px;left:0;right:0;z-index:99;
+  background:#080808;border-bottom:1px solid #1a1a1a;
+  flex-direction:column;padding:16px 24px 24px;gap:4px;
+}
+.mobile-menu.open{display:flex}
+.mobile-menu a,.mobile-menu button{
+  display:block;width:100%;text-align:left;padding:13px 0;
+  font-size:15px;color:#888;background:none;border:none;
+  border-bottom:1px solid #111;font-family:'DM Sans',sans-serif;
+  cursor:pointer;transition:color .15s;
+}
+.mobile-menu a:last-child,.mobile-menu button:last-child{border-bottom:none}
+.mobile-menu a:hover,.mobile-menu button:hover{color:#f0ede8}
+.mobile-menu .mob-cta{
+  margin-top:12px;background:#ff4d1c;color:#fff!important;
+  border-radius:6px;padding:13px!important;text-align:center!important;
+  font-weight:500;border:none!important;
+}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  /* Nav */
+  .nav-links{display:none!important}
+  .nav-actions{display:none!important}
+  .hamburger{display:flex!important}
+
+  /* Hero */
+  .hero-section{padding:100px 20px 60px!important}
+  .hero-stats{gap:28px!important}
+
+  /* Steps */
+  .steps-section{padding:64px 20px!important}
+  .steps-grid{grid-template-columns:1fr!important;gap:24px!important}
+  .steps-terminal{position:static!important}
+
+  /* Competitors */
+  .comp-section{padding:60px 20px!important}
+
+  /* Stats */
+  .stats-section{padding:60px 20px!important}
+  .stats-grid{grid-template-columns:1fr 1fr!important}
+  .stat-cell{border-right:none!important;border-bottom:1px solid #1a1a1a}
+  .stat-cell:nth-child(1),.stat-cell:nth-child(2){border-right:1px solid #1a1a1a!important}
+  .stat-cell .stat-number{font-size:38px!important}
+  .stat-cell{padding:32px 24px!important}
+
+  /* Pricing */
+  .pricing-section{padding:60px 20px 80px!important}
+  .plans-grid{grid-template-columns:1fr!important;max-width:420px;margin:0 auto}
+
+  /* CTA */
+  .cta-section{padding:60px 20px!important}
+  .cta-inner{padding:40px 24px!important;border-radius:16px!important}
+
+  /* Footer */
+  .footer{flex-direction:column!important;align-items:flex-start!important;padding:28px 20px!important;gap:20px!important}
+}
+
+@media(max-width:480px){
+  .hero-section{padding:90px 16px 48px!important}
+  .hero-btns{flex-direction:column!important;align-items:stretch!important}
+  .hero-btns button{width:100%!important;text-align:center!important}
+  .hero-stats{flex-direction:column!important;gap:20px!important}
+  .steps-section{padding:52px 16px!important}
+  .comp-section{padding:48px 16px!important}
+  .pricing-section{padding:48px 16px 64px!important}
+  .cta-section{padding:48px 16px!important}
+  .cta-inner{padding:32px 18px!important}
+  .waitlist-row{flex-direction:column!important}
+  .waitlist-row input,.waitlist-row button{width:100%!important}
+  .stats-grid{grid-template-columns:1fr!important}
+  .stat-cell{border-right:none!important;border-bottom:1px solid #1a1a1a!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav style="position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:64px;background:#05050599;backdrop-filter:blur(20px);border-bottom:1px solid #1a1a1a">
+  <div style="display:flex;align-items:center;gap:8px">
+    <div style="width:28px;height:28px;background:#ff4d1c;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff">S</div>
+    <span style="font-weight:600;font-size:16px;letter-spacing:-.01em">Stock<span style="color:#ff4d1c">Sense</span></span>
+    <span style="margin-left:10px;font-size:10px;font-weight:500;letter-spacing:.1em;color:#ff4d1c;background:#ff4d1c15;border:1px solid #ff4d1c33;padding:2px 8px;border-radius:4px;text-transform:uppercase">AI Agent</span>
+  </div>
+  <div class="nav-links" style="display:flex;gap:32px;font-size:14px;color:#888">
+    <a href="#how" style="transition:color .2s" onmouseenter="this.style.color='#f0ede8'" onmouseleave="this.style.color='#888'">How it works</a>
+    <a href="#pricing" style="transition:color .2s" onmouseenter="this.style.color='#f0ede8'" onmouseleave="this.style.color='#888'">Pricing</a>
+    <a href="#" style="transition:color .2s" onmouseenter="this.style.color='#f0ede8'" onmouseleave="this.style.color='#888'">Docs</a>
+  </div>
+  <div class="nav-actions" style="display:flex;gap:12px">
+    <button class="ss-btn-ghost" style="padding:8px 18px;font-size:13px">Sign in</button>
+    <button class="ss-btn-primary" style="padding:8px 18px;font-size:13px">Get started →</button>
+  </div>
+  <button class="hamburger" id="hamburger" onclick="toggleMenu()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- Mobile menu -->
+<div class="mobile-menu" id="mobile-menu">
+  <a href="#how" onclick="toggleMenu()">How it works</a>
+  <a href="#pricing" onclick="toggleMenu()">Pricing</a>
+  <a href="#">Docs</a>
+  <a href="#">Sign in</a>
+  <button class="mob-cta" onclick="toggleMenu()">Get started →</button>
+</div>
+
+<!-- ── HERO ── -->
+<section class="hero-section" style="min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:120px 40px 80px;max-width:1200px;margin:0 auto;position:relative">
+
+  <!-- Grid bg -->
+  <div style="position:absolute;inset:0;z-index:0;background-image:linear-gradient(#1a1a1a 1px,transparent 1px),linear-gradient(90deg,#1a1a1a 1px,transparent 1px);background-size:60px 60px;opacity:.3;mask-image:radial-gradient(ellipse 80% 60% at 50% 0%,black,transparent);-webkit-mask-image:radial-gradient(ellipse 80% 60% at 50% 0%,black,transparent)"></div>
+
+  <!-- Glow -->
+  <div style="position:absolute;top:10%;left:50%;transform:translateX(-50%);width:600px;height:400px;z-index:0;background:radial-gradient(ellipse,#ff4d1c18 0%,transparent 70%);pointer-events:none"></div>
+
+  <div style="position:relative;z-index:1">
+    <div class="fade-up" style="animation-delay:.1s;margin-bottom:24px">
+      <span style="display:inline-flex;align-items:center;gap:8px;font-size:13px;color:#888;border:1px solid #222;padding:6px 14px;border-radius:100px;background:#0f0f0f">
+        <span style="width:6px;height:6px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e88"></span>
+        Now live — connect your Shopify store
+      </span>
+    </div>
+
+    <h1 class="fade-up" style="animation-delay:.2s;font-family:'Instrument Serif',serif;font-size:clamp(52px,7vw,96px);font-weight:400;line-height:1.05;letter-spacing:-.03em;max-width:820px;margin-bottom:32px">
+      The inventory agent that <span style="color:#ff4d1c;font-style:italic">acts</span>,<br/>not just alerts.
+    </h1>
+
+    <p class="fade-up" style="animation-delay:.35s;font-size:18px;color:#888;line-height:1.7;max-width:520px;margin-bottom:48px;font-weight:300">
+      StockSense connects to Shopify, reasons through your live inventory data, and sends purchase orders to suppliers automatically. The first AI-native supply chain agent.
+    </p>
+
+    <div class="fade-up hero-btns" style="animation-delay:.45s;display:flex;gap:16px;flex-wrap:wrap">
+      <button class="ss-btn-primary" style="font-size:15px;padding:14px 32px">Connect your store →</button>
+      <button class="ss-btn-ghost" style="font-size:15px">See how it works</button>
+    </div>
+
+    <div class="fade-up hero-stats" style="animation-delay:.6s;margin-top:64px;display:flex;gap:48px;flex-wrap:wrap">
+      <div>
+        <div style="font-family:'Instrument Serif',serif;font-size:36px;font-weight:400;color:#f0ede8">$1.8T</div>
+        <div style="font-size:13px;color:#555;margin-top:6px;max-width:140px">lost to inventory distortion yearly</div>
+      </div>
+      <div>
+        <div style="font-family:'Instrument Serif',serif;font-size:36px;font-weight:400;color:#f0ede8">34%</div>
+        <div style="font-size:13px;color:#555;margin-top:6px;max-width:140px">avg revenue lost to stockouts</div>
+      </div>
+      <div>
+        <div style="font-family:'Instrument Serif',serif;font-size:36px;font-weight:400;color:#f0ede8">0</div>
+        <div style="font-size:13px;color:#555;margin-top:6px;max-width:140px">tools that explain their reasoning</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── TICKER ── -->
+<div style="overflow:hidden;border-top:1px solid #1a1a1a;border-bottom:1px solid #1a1a1a;padding:14px 0;background:#080808">
+  <div style="display:flex">
+    <div class="ticker-track" id="ticker">
+      <!-- filled by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- ── HOW IT WORKS ── -->
+<section id="how" class="steps-section" style="padding:120px 40px;max-width:1200px;margin:0 auto">
+  <div style="margin-bottom:64px">
+    <div style="font-size:12px;letter-spacing:.15em;color:#ff4d1c;text-transform:uppercase;font-weight:500;margin-bottom:16px">How it works</div>
+    <h2 style="font-family:'Instrument Serif',serif;font-size:clamp(36px,4vw,56px);font-weight:400;letter-spacing:-.02em;line-height:1.1;max-width:600px">
+      The agent that reasons<br/><span style="font-style:italic;color:#888">out loud.</span>
+    </h2>
+  </div>
+
+  <div class="steps-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:start">
+
+    <!-- Step cards -->
+    <div style="display:flex;flex-direction:column;gap:12px" id="step-cards"></div>
+
+    <!-- Demo terminal -->
+    <div class="steps-terminal" style="position:sticky;top:100px">
+      <div id="reasoning-demo" style="background:#0a0a0a;border:1px solid #1f1f1f;border-radius:12px;padding:32px;font-family:'JetBrains Mono','Fira Code',monospace;font-size:13px;line-height:1.7;min-height:280px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:24px">
+          <div style="width:11px;height:11px;border-radius:50%;background:#ff5f57"></div>
+          <div style="width:11px;height:11px;border-radius:50%;background:#febc2e"></div>
+          <div style="width:11px;height:11px;border-radius:50%;background:#28c840"></div>
+          <span style="color:#4a4a4a;font-size:12px;margin-left:8px">stocksense — agent reasoning</span>
+        </div>
+        <div id="reasoning-lines"></div>
+      </div>
+
+      <div style="margin-top:16px;padding:20px 24px;border:1px solid #1a1a1a;border-radius:12px;background:#0a0a0a;display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:13px;color:#888">Purchase order ready</div>
+          <div style="font-weight:600;font-size:16px;margin-top:4px">SafeGear EU · 180 units · €4,320</div>
+        </div>
+        <button class="ss-btn-primary" style="padding:10px 20px;font-size:13px">Approve &amp; Send →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── VS COMPETITORS ── -->
+<section class="comp-section" style="padding:80px 40px;background:#080808;border-top:1px solid #1a1a1a">
+  <div style="max-width:1200px;margin:0 auto">
+    <div style="margin-bottom:56px;text-align:center">
+      <div style="font-size:12px;letter-spacing:.15em;color:#ff4d1c;text-transform:uppercase;font-weight:500;margin-bottom:16px">Competitive positioning</div>
+      <h2 style="font-family:'Instrument Serif',serif;font-size:clamp(32px,4vw,52px);font-weight:400;letter-spacing:-.02em">
+        Every competitor is a dashboard.<br/><span style="font-style:italic">We're the first agent.</span>
+      </h2>
+    </div>
+
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        <thead>
+          <tr style="border-bottom:1px solid #1a1a1a">
+            <th style="padding:12px 20px;text-align:left;color:#444;font-weight:400;font-size:12px;letter-spacing:.05em;text-transform:uppercase"></th>
+            <th style="padding:12px 20px;text-align:center;color:#444;font-weight:400;font-size:12px;letter-spacing:.05em;text-transform:uppercase">Reasons through data</th>
+            <th style="padding:12px 20px;text-align:center;color:#444;font-weight:400;font-size:12px;letter-spacing:.05em;text-transform:uppercase">Predicts stockouts</th>
+            <th style="padding:12px 20px;text-align:center;color:#444;font-weight:400;font-size:12px;letter-spacing:.05em;text-transform:uppercase">Sends POs automatically</th>
+            <th style="padding:12px 20px;text-align:center;color:#444;font-weight:400;font-size:12px;letter-spacing:.05em;text-transform:uppercase">Explains decisions</th>
+            <th style="padding:12px 20px;text-align:center;color:#444;font-weight:400;font-size:12px;letter-spacing:.05em;text-transform:uppercase">Shows inventory</th>
+          </tr>
+        </thead>
+        <tbody id="competitors-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ── STATS ── -->
+<section class="stats-section" style="padding:120px 40px;max-width:1200px;margin:0 auto">
+  <div class="stats-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:2px;border:1px solid #1a1a1a;border-radius:12px;overflow:hidden">
+    <div class="stat-cell" data-value="1800" data-suffix="+" style="padding:48px 40px;border-right:1px solid #1a1a1a;background:#0a0a0a">
+      <div class="stat-number" style="font-family:'Instrument Serif',serif;font-size:52px;font-weight:400;color:#f0ede8;line-height:1;margin-bottom:12px">$<span>0</span>B+</div>
+      <div style="font-size:13px;color:#555;line-height:1.5">Billions lost yearly to inventory distortion</div>
+    </div>
+    <div class="stat-cell" data-value="34" data-suffix="%" style="padding:48px 40px;border-right:1px solid #1a1a1a;background:#0a0a0a">
+      <div class="stat-number" style="font-family:'Instrument Serif',serif;font-size:52px;font-weight:400;color:#f0ede8;line-height:1;margin-bottom:12px"><span>0</span>%</div>
+      <div style="font-size:13px;color:#555;line-height:1.5">Average revenue lost to stockouts annually</div>
+    </div>
+    <div class="stat-cell" data-value="12" data-suffix="d" style="padding:48px 40px;border-right:1px solid #1a1a1a;background:#0a0a0a">
+      <div class="stat-number" style="font-family:'Instrument Serif',serif;font-size:52px;font-weight:400;color:#f0ede8;line-height:1;margin-bottom:12px"><span>0</span>d</div>
+      <div style="font-size:13px;color:#555;line-height:1.5">Avg stockout predicted in advance by StockSense</div>
+    </div>
+    <div class="stat-cell" data-value="100" data-suffix="%" style="padding:48px 40px;background:#0a0a0a">
+      <div class="stat-number" style="font-family:'Instrument Serif',serif;font-size:52px;font-weight:400;color:#f0ede8;line-height:1;margin-bottom:12px"><span>0</span>%</div>
+      <div style="font-size:13px;color:#555;line-height:1.5">Of decisions explained in plain language</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PRICING ── -->
+<section id="pricing" class="pricing-section" style="padding:80px 40px 120px;background:#080808;border-top:1px solid #1a1a1a">
+  <div style="max-width:1200px;margin:0 auto">
+    <div style="margin-bottom:64px;text-align:center">
+      <div style="font-size:12px;letter-spacing:.15em;color:#ff4d1c;text-transform:uppercase;font-weight:500;margin-bottom:16px">Pricing</div>
+      <h2 style="font-family:'Instrument Serif',serif;font-size:clamp(32px,4vw,52px);font-weight:400;letter-spacing:-.02em">Simple. Transparent.</h2>
+    </div>
+    <div class="plans-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px" id="plans-grid"></div>
+  </div>
+</section>
+
+<!-- ── WAITLIST CTA ── -->
+<section class="cta-section" style="padding:120px 40px;max-width:800px;margin:0 auto;text-align:center">
+  <div class="cta-inner" style="padding:80px 60px;border:1px solid #1a1a1a;border-radius:20px;background:#0a0a0a;position:relative;overflow:hidden">
+    <div style="position:absolute;top:-100px;left:50%;transform:translateX(-50%);width:400px;height:300px;background:radial-gradient(ellipse,#ff4d1c12,transparent 70%);pointer-events:none"></div>
+    <div style="position:relative">
+      <div style="font-size:12px;letter-spacing:.15em;color:#ff4d1c;text-transform:uppercase;font-weight:500;margin-bottom:16px">Early access</div>
+      <h2 style="font-family:'Instrument Serif',serif;font-size:clamp(32px,4vw,52px);font-weight:400;letter-spacing:-.02em;margin-bottom:16px;line-height:1.1">
+        Stop managing inventory.<br/><span style="font-style:italic;color:#888">Start delegating it.</span>
+      </h2>
+      <p style="color:#555;font-size:15px;margin-bottom:40px;line-height:1.6">First 100 stores get 3 months free. No credit card required.</p>
+
+      <div id="waitlist-success" style="display:none;justify-content:center">
+        <div style="display:inline-flex;align-items:center;gap:10px;background:#22c55e15;border:1px solid #22c55e44;color:#22c55e;padding:14px 28px;border-radius:8px;font-size:14px">
+          <span>✓</span> You're on the list — we'll be in touch.
+        </div>
+      </div>
+
+      <div id="waitlist-form" class="waitlist-row" style="display:flex;gap:12px;max-width:440px;margin:0 auto;flex-wrap:wrap;justify-content:center">
+        <input id="waitlist-email" type="email" placeholder="you@yourstore.com"
+          style="flex:1;background:#111;border:1px solid #2a2a2a;border-radius:6px;padding:13px 18px;font-size:14px;color:#f0ede8;outline:none;font-family:'DM Sans',sans-serif;min-width:200px;transition:border-color .2s"
+          onfocus="this.style.borderColor='#ff4d1c44'"
+          onblur="this.style.borderColor='#2a2a2a'"
+        />
+        <button class="ss-btn-primary" onclick="handleWaitlist()" style="font-size:14px">Join waitlist →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer class="footer" style="padding:40px;border-top:1px solid #111;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px">
+  <div style="display:flex;align-items:center;gap:8px">
+    <div style="width:24px;height:24px;background:#ff4d1c;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff">S</div>
+    <span style="font-weight:500;font-size:14px">StockSense</span>
+    <span style="color:#333;font-size:13px;margin-left:8px">· by Interluty Inc.</span>
+  </div>
+  <div style="font-size:12px;color:#333">© 2026 StockSense. AI-native supply chain agent.</div>
+  <div style="display:flex;gap:24px;font-size:13px;color:#444">
+    <a href="#" onmouseenter="this.style.color='#888'" onmouseleave="this.style.color='#444'" style="transition:color .2s">Privacy</a>
+    <a href="#" onmouseenter="this.style.color='#888'" onmouseleave="this.style.color='#444'" style="transition:color .2s">Terms</a>
+    <a href="#" onmouseenter="this.style.color='#888'" onmouseleave="this.style.color='#444'" style="transition:color .2s">Docs</a>
+  </div>
+</footer>
+
+<script>
+/* ── Data ── */
+const steps = [
+  { id:"01", label:"Observe", title:"Live inventory intelligence",
+    body:"Connects to Shopify via OAuth. Reads every SKU — stock levels, sales velocity, supplier history, and order data. All live, all real-time.",
+    stat:"Real-time", statLabel:"data sync" },
+  { id:"02", label:"Reason", title:"Agent-level analysis",
+    body:"Not 'stock is low.' It reasons: given your velocity, your supplier's real lead time, and upcoming demand signals, you have 2 days before stockout.",
+    stat:"12 days", statLabel:"avg stockout predicted in advance" },
+  { id:"03", label:"Decide", title:"Explains every decision",
+    body:"Generates a specific recommendation with full plain-language reasoning. Not a black box — every decision explained so you stay in control.",
+    stat:"100%", statLabel:"transparent reasoning" },
+  { id:"04", label:"Act", title:"Purchase orders, automatically",
+    body:"Drafts and sends purchase orders directly to suppliers via email. One click to approve, the agent handles the rest — routing, formatting, sending.",
+    stat:"1 click", statLabel:"to approve and send" },
+];
+
+const competitors = [
+  { name:"Linnworks",          type:"Dashboard", highlight:false },
+  { name:"Brightpearl",        type:"Dashboard", highlight:false },
+  { name:"Inventory Planner",  type:"Dashboard", highlight:false },
+  { name:"Skubana",            type:"Dashboard", highlight:false },
+  { name:"Cin7",               type:"Dashboard", highlight:false },
+  { name:"StockSense",         type:"Agent",     highlight:true  },
+];
+
+const reasoning = [
+  { role:"observe", text:"Helmet Safety V2 — stock: 8 units. Velocity: 3.8/day. Days remaining: 2.1" },
+  { role:"reason",  text:"Supplier SafeGear EU has a 14-day lead time. Summer starts in 28 days — demand spike expected." },
+  { role:"decide",  text:"Order 180 units immediately. Covers 12-day gap + 90 days summer demand buffer." },
+  { role:"act",     text:"Purchase Order generated → SafeGear EU · 180 units · €4,320. Ready to send." },
+];
+
+const plans = [
+  { name:"Free",    price:"$0",   period:"",    desc:"Try the agent on your store.",
+    features:["10 SKUs","1 analysis/month","View recommendations"], cta:"Start free", highlight:false },
+  { name:"Starter", price:"$49",  period:"/mo", desc:"For growing Shopify stores.",
+    features:["50 SKUs","Unlimited analyses","PO sending","All business models"], cta:"Get started", highlight:false },
+  { name:"Pro",     price:"$149", period:"/mo", desc:"Full agent for scaling brands.",
+    features:["Unlimited SKUs","CSV export","3 users","90-day history"], cta:"Get started", highlight:true },
+  { name:"Agency",  price:"$399", period:"/mo", desc:"Manage multiple stores.",
+    features:["5 stores","10 users","Unlimited history","Priority support"], cta:"Get started", highlight:false },
+];
+
+const roleStyle = {
+  observe:{ label:"→ Observing", color:"#6ee7b7" },
+  reason: { label:"→ Reasoning", color:"#93c5fd" },
+  decide: { label:"→ Decision",  color:"#fbbf24" },
+  act:    { label:"→ Action",    color:"#f87171" },
+};
+
+/* ── Ticker ── */
+const tickerItems = ["Reasons through data","Predicts stockouts","Sends purchase orders","Explains every decision","Works 24/7","Zero false alerts"];
+const tickerEl = document.getElementById('ticker');
+const repeated = [...tickerItems,...tickerItems,...tickerItems,...tickerItems];
+tickerEl.innerHTML = repeated.map(t =>
+  `<span style="font-size:13px;color:#555;display:inline-flex;align-items:center;gap:16px">${t}<span style="color:#ff4d1c;font-size:16px">◆</span></span>`
+).join('');
+
+/* ── Step cards ── */
+let activeStep = 0;
+const cardsEl = document.getElementById('step-cards');
+
+function renderSteps() {
+  cardsEl.innerHTML = steps.map((s,i) => `
+    <div class="step-card${i===activeStep?' active':''}" onclick="setStep(${i})">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#333;font-weight:500">${s.id}</span>
+          <span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#555;font-weight:500">${s.label}</span>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'Instrument Serif',serif;font-size:22px;color:#f0ede8">${s.stat}</div>
+          <div style="font-size:10px;color:#444;margin-top:2px">${s.statLabel}</div>
+        </div>
+      </div>
+      <div style="font-weight:500;font-size:16px;margin-bottom:8px;color:#f0ede8">${s.title}</div>
+      <div style="font-size:14px;color:#666;line-height:1.6;max-height:${i===activeStep?'200px':'0'};overflow:hidden;transition:max-height .4s ease,opacity .3s;opacity:${i===activeStep?1:0}">${s.body}</div>
+    </div>
+  `).join('');
+}
+
+function setStep(i) {
+  activeStep = i;
+  renderSteps();
+}
+
+renderSteps();
+
+/* ── Reasoning demo typewriter ── */
+const linesEl = document.getElementById('reasoning-lines');
+let reasoningStarted = false;
+
+function startReasoning() {
+  if(reasoningStarted) return;
+  reasoningStarted = true;
+
+  // init DOM
+  linesEl.innerHTML = reasoning.map((r,i) => {
+    const s = roleStyle[r.role];
+    return `
+      <div id="rl-${i}" style="margin-bottom:16px;opacity:.2;transition:opacity .4s">
+        <div style="color:${s.color};font-weight:600;margin-bottom:4px">${s.label}</div>
+        <div id="rl-text-${i}" style="color:#d4d4d4;padding-left:16px"></div>
+      </div>`;
+  }).join('');
+
+  let idx = 0;
+  function runLine(i) {
+    if(i >= reasoning.length) return;
+    const r = reasoning[i];
+    const lineEl = document.getElementById(`rl-${i}`);
+    const textEl = document.getElementById(`rl-text-${i}`);
+    lineEl.style.opacity = '1';
+    let pos = 0;
+    const full = r.text;
+
+    function type() {
+      pos++;
+      textEl.innerHTML = full.slice(0,pos) + (pos < full.length
+        ? '<span style="border-right:2px solid #fff;margin-left:2px;animation:blink 1s step-end infinite">&nbsp;</span>'
+        : '');
+      if(pos < full.length) {
+        setTimeout(type, 18);
+      } else {
+        setTimeout(() => runLine(i+1), 900);
+      }
+    }
+    setTimeout(type, 400);
+  }
+  runLine(0);
+}
+
+// IntersectionObserver for reasoning demo
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting) startReasoning(); });
+}, { threshold: 0.2 });
+obs.observe(document.getElementById('reasoning-demo'));
+
+/* ── Competitors table ── */
+const tbody = document.getElementById('competitors-tbody');
+tbody.innerHTML = competitors.map(c => `
+  <tr style="border-bottom:1px solid #111;background:${c.highlight?'#0f0a09':'transparent'};transition:background .2s"
+    onmouseenter="this.style.background='${c.highlight?'#130c0a':'#0a0a0a'}'"
+    onmouseleave="this.style.background='${c.highlight?'#0f0a09':'transparent'}'">
+    <td style="padding:16px 20px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-weight:${c.highlight?600:400};color:${c.highlight?'#f0ede8':'#888'}">${c.name}</span>
+        <span style="font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:${c.highlight?'#ff4d1c22':'#1a1a1a'};color:${c.highlight?'#ff4d1c':'#444'};border:${c.highlight?'1px solid #ff4d1c44':'1px solid #222'}">${c.type}</span>
+      </div>
+    </td>
+    ${[0,1,2,3,4].map(ci => {
+      const val = c.highlight ? true : ci === 4;
+      return `<td style="padding:16px 20px;text-align:center"><span style="font-size:16px;color:${val?'#22c55e':'#2a2a2a'}">${val?'✓':'✕'}</span></td>`;
+    }).join('')}
+  </tr>
+`).join('');
+
+/* ── Animated numbers ── */
+function animateNum(el, target) {
+  const duration = 1200;
+  const start = Date.now();
+  function step() {
+    const p = Math.min((Date.now()-start)/duration, 1);
+    const eased = 1 - Math.pow(1-p, 3);
+    el.textContent = Math.round(eased * target);
+    if(p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+const statObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(!e.isIntersecting) return;
+    const cell = e.target;
+    const val = parseInt(cell.dataset.value);
+    const spanEl = cell.querySelector('.stat-number span');
+    animateNum(spanEl, val);
+    statObs.unobserve(cell);
+  });
+}, { threshold: 0.4 });
+document.querySelectorAll('.stat-cell').forEach(el => statObs.observe(el));
+
+/* ── Plans ── */
+const plansEl = document.getElementById('plans-grid');
+plansEl.innerHTML = plans.map(p => `
+  <div class="plan-card${p.highlight?' featured':''}">
+    ${p.highlight ? `<div style="position:absolute;top:-1px;left:50%;transform:translateX(-50%);background:#ff4d1c;color:#fff;font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:4px 16px;border-radius:0 0 8px 8px">Most popular</div>` : ''}
+    <div style="margin-top:${p.highlight?'16px':'0'};margin-bottom:8px">
+      <span style="font-size:13px;color:#555;font-weight:500;text-transform:uppercase;letter-spacing:.08em">${p.name}</span>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:12px">
+      <span style="font-family:'Instrument Serif',serif;font-size:44px;font-weight:400;color:#f0ede8">${p.price}</span>
+      <span style="color:#555;font-size:14px">${p.period}</span>
+    </div>
+    <div style="font-size:13px;color:#555;margin-bottom:28px;line-height:1.5">${p.desc}</div>
+    <div style="border-top:1px solid #1a1a1a;padding-top:24px;margin-bottom:24px">
+      ${p.features.map(f => `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <span style="color:#22c55e;font-size:12px">✓</span>
+          <span style="font-size:13px;color:#888">${f}</span>
+        </div>
+      `).join('')}
+    </div>
+    <button class="${p.highlight?'ss-btn-primary':'ss-btn-ghost'}" style="width:100%;padding:12px;font-size:14px">${p.cta}</button>
+  </div>
+`).join('');
+
+/* ── Waitlist ── */
+function handleWaitlist() {
+  const email = document.getElementById('waitlist-email').value;
+  if(!email) return;
+  document.getElementById('waitlist-form').style.display = 'none';
+  document.getElementById('waitlist-success').style.display = 'flex';
+}
+document.getElementById('waitlist-email').addEventListener('keydown', e => {
+  if(e.key === 'Enter') handleWaitlist();
+});
+
+/* ── Fade-up on scroll ── */
+const fuObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting) {
+      e.target.style.opacity = '1';
+      e.target.style.transform = 'none';
+      fuObs.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.fade-up').forEach(el => {
+  // let CSS animation handle hero, observe the rest for scroll
+  fuObs.observe(el);
+});
+
+/* ── Blink keyframe ── */
+const style = document.createElement('style');
+style.textContent = '@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}';
+document.head.appendChild(style);
+
+/* ── Hamburger ── */
+function toggleMenu() {
+  const btn = document.getElementById('hamburger');
+  const menu = document.getElementById('mobile-menu');
+  btn.classList.toggle('open');
+  menu.classList.toggle('open');
+}
+
+/* ── Nav padding on mobile ── */
+function fixNavPadding() {
+  const nav = document.querySelector('nav');
+  if(window.innerWidth <= 480) {
+    nav.style.padding = '0 16px';
+  } else if(window.innerWidth <= 768) {
+    nav.style.padding = '0 24px';
+  } else {
+    nav.style.padding = '0 40px';
+  }
+}
+fixNavPadding();
+window.addEventListener('resize', fixNavPadding);
+
+/* ── Close menu on resize ── */
+window.addEventListener('resize', () => {
+  if(window.innerWidth > 768) {
+    document.getElementById('hamburger').classList.remove('open');
+    document.getElementById('mobile-menu').classList.remove('open');
+  }
+});
+</script>
+</body>
+</html>

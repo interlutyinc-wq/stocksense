@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>StockSense — The agent that acts.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+::selection{background:#ff4d1c33;color:#f0ede8}
+body{font-family:'DM Sans',sans-serif;background:#050505;color:#f0ede8;min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+
+@keyframes fadeUp{to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.4)}}
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+.fu{opacity:0;transform:translateY(20px);animation:fadeUp .65s forwards}
+
+/* ── Buttons ── */
+.ss-primary{
+  background:#ff4d1c;color:#fff;border:none;
+  padding:14px 32px;border-radius:7px;
+  font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;
+  cursor:pointer;transition:all .2s;letter-spacing:.01em;
+  display:inline-flex;align-items:center;gap:8px;
+}
+.ss-primary:hover{background:#e63d0d;transform:translateY(-1px);box-shadow:0 10px 28px #ff4d1c44}
+.ss-ghost{
+  background:transparent;color:#f0ede8;border:1px solid #2a2a2a;
+  padding:13px 28px;border-radius:7px;
+  font-family:'DM Sans',sans-serif;font-size:15px;font-weight:400;
+  cursor:pointer;transition:all .2s;
+}
+.ss-ghost:hover{border-color:#444;background:#0f0f0f}
+
+/* ── Feature pill ── */
+.feature-pill{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:8px 16px;border-radius:100px;
+  border:1px solid #1a1a1a;background:#0a0a0a;
+  font-size:13px;color:#777;transition:all .2s;cursor:default;
+}
+.feature-pill:hover{border-color:#333;color:#f0ede8}
+
+/* ── Nav ── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 40px;height:64px;
+  background:#05050599;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid #141414;
+}
+.nav-logo{display:flex;align-items:center;gap:9px;flex-shrink:0}
+.nav-logo-icon{width:28px;height:28px;background:#ff4d1c;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff}
+.nav-logo-text{font-weight:600;font-size:16px;letter-spacing:-.01em}
+.nav-links-desktop{display:flex;gap:28px}
+.nav-link{color:#666;font-size:14px;transition:color .18s;cursor:pointer;white-space:nowrap}
+.nav-link:hover{color:#f0ede8}
+.nav-actions{display:flex;gap:10px;align-items:center}
+
+/* ── Hamburger ── */
+.hamburger{
+  display:none;flex-direction:column;justify-content:center;gap:5px;
+  width:40px;height:40px;background:none;border:1px solid #1f1f1f;
+  border-radius:8px;cursor:pointer;padding:6px;flex-shrink:0;
+}
+.hamburger span{display:block;height:1.5px;background:#888;border-radius:2px;transition:all .25s;transform-origin:center}
+.hamburger:hover span{background:#f0ede8}
+.hamburger.open{border-color:#333}
+.hamburger.open span:nth-child(1){transform:translateY(6.5px) rotate(45deg);background:#f0ede8}
+.hamburger.open span:nth-child(2){opacity:0}
+.hamburger.open span:nth-child(3){transform:translateY(-6.5px) rotate(-45deg);background:#f0ede8}
+
+/* ── Mobile menu ── */
+.mobile-menu{
+  display:none;position:fixed;top:64px;left:0;right:0;z-index:99;
+  background:#080808;
+  border-bottom:1px solid #1a1a1a;
+  flex-direction:column;
+  padding:0;
+  box-shadow:0 20px 40px rgba(0,0,0,.6);
+}
+.mobile-menu.open{display:flex}
+.mob-nav-links{padding:8px 0}
+.mob-nav-link{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 24px;font-size:15px;font-weight:400;
+  color:#888;background:none;border:none;width:100%;text-align:left;
+  font-family:'DM Sans',sans-serif;cursor:pointer;transition:all .15s;
+  border-bottom:1px solid #0f0f0f;
+}
+.mob-nav-link:hover{color:#f0ede8;background:#0a0a0a}
+.mob-nav-link:last-child{border-bottom:none}
+.mob-nav-link .arrow{color:#333;font-size:12px;transition:color .15s}
+.mob-nav-link:hover .arrow{color:#666}
+.mob-actions{padding:16px 20px;border-top:1px solid #141414;display:flex;flex-direction:column;gap:10px}
+.mob-sign-in{
+  display:block;width:100%;padding:13px;text-align:center;
+  font-size:14px;font-weight:500;color:#888;background:none;
+  border:1px solid #2a2a2a;border-radius:7px;font-family:'DM Sans',sans-serif;
+  cursor:pointer;transition:all .15s;
+}
+.mob-sign-in:hover{color:#f0ede8;border-color:#444}
+.mob-cta{
+  display:block;width:100%;padding:14px;text-align:center;
+  font-size:14px;font-weight:600;color:#fff;background:#ff4d1c;
+  border:none;border-radius:7px;font-family:'DM Sans',sans-serif;
+  cursor:pointer;letter-spacing:.01em;transition:background .15s;
+}
+.mob-cta:hover{background:#e63d0d}
+
+/* ── Hero ── */
+.hero{
+  min-height:100vh;padding:80px 40px 60px;
+  max-width:1200px;margin:0 auto;
+  display:flex;flex-direction:column;justify-content:center;position:relative;
+}
+.hero-grid{display:grid;grid-template-columns:1fr 420px;gap:64px;align-items:center;position:relative;z-index:1}
+.hero-bg-grid{
+  position:absolute;inset:0;z-index:0;
+  background-image:linear-gradient(#161616 1px,transparent 1px),linear-gradient(90deg,#161616 1px,transparent 1px);
+  background-size:56px 56px;opacity:.22;
+  mask-image:radial-gradient(ellipse 90% 70% at 50% 0%,black,transparent);
+  -webkit-mask-image:radial-gradient(ellipse 90% 70% at 50% 0%,black,transparent);
+}
+.hero-glow{
+  position:absolute;top:5%;left:55%;transform:translateX(-50%);
+  width:700px;height:500px;z-index:0;
+  background:radial-gradient(ellipse,#ff4d1c14 0%,transparent 65%);
+  pointer-events:none;
+}
+
+/* ── Live feed ── */
+.live-feed{border:1px solid #1a1a1a;border-radius:14px;background:#080808;overflow:hidden}
+.feed-header{padding:14px 20px;border-bottom:1px solid #141414;display:flex;align-items:center;justify-content:space-between}
+.feed-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;animation:pulse 2s ease-in-out infinite}
+.feed-row{padding:14px 20px;border-bottom:1px solid #0f0f0f;display:flex;align-items:center;gap:14px}
+.feed-row:last-child{border-bottom:none}
+.feed-row.new{animation:slideIn .35s ease}
+
+/* ── Stat mini cards ── */
+.stat-mini{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.stat-mini-card{padding:18px 20px;border:1px solid #1a1a1a;border-radius:12px;background:#080808}
+
+/* ── Positioning strip ── */
+.pos-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;border:1px solid #141414;border-radius:14px;overflow:hidden}
+.pos-col{padding:44px 48px}
+
+/* ── Responsive ── */
+@media(max-width:900px){
+  .hero-grid{grid-template-columns:1fr!important}
+  .feed-col{display:none!important}
+  .pos-grid{grid-template-columns:1fr!important}
+  .pos-col{padding:32px 28px!important}
+  .hero{padding:90px 32px 60px!important}
+}
+
+@media(max-width:640px){
+  nav{padding:0 20px!important}
+  .hero{padding:88px 20px 48px!important}
+  .hero-grid{gap:24px!important}
+  .hero-btns{flex-direction:column!important;gap:10px!important}
+  .hero-btns .ss-primary,.hero-btns .ss-ghost{width:100%!important;justify-content:center!important;padding:14px!important}
+  .nav-links-desktop{display:none!important}
+  .nav-actions{display:none!important}
+  .hamburger{display:flex!important}
+  .feature-pills-wrap{padding:18px 20px!important}
+  .positioning{padding:48px 20px!important}
+  .bottom-cta{padding:40px 20px 72px!important}
+  .cta-inner{padding:36px 22px!important;border-radius:14px!important}
+  footer{padding:24px 20px!important;flex-direction:column!important;align-items:flex-start!important;gap:16px!important}
+  .pos-col{padding:28px 20px!important}
+  /* Logos e social proof compatti */
+  #logos-row{gap:8px!important}
+  /* Hero pill wrap */
+  .hero-pill-wrap{margin-bottom:20px!important}
+  .hero-pill{font-size:12px!important;padding:6px 12px!important}
+  /* Subheadline */
+  .hero-sub{font-size:15px!important;margin-bottom:28px!important}
+  /* Social proof label */
+  .social-label{margin-top:24px!important}
+}
+
+@media(max-width:420px){
+  .hero{padding:80px 16px 40px!important}
+  .feature-pills-wrap{padding:16px!important}
+  .positioning{padding:36px 16px!important}
+  .bottom-cta{padding:32px 16px 60px!important}
+  .cta-inner{padding:28px 18px!important}
+  footer{padding:20px 16px!important}
+  nav{padding:0 16px!important}
+  .stat-mini{grid-template-columns:1fr 1fr!important}
+  .cta-btns{flex-direction:column!important;gap:10px!important}
+  .cta-btns .ss-primary,.cta-btns .ss-ghost{width:100%!important;justify-content:center!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <div class="nav-logo">
+    <div class="nav-logo-icon">S</div>
+    <span class="nav-logo-text">Stock<span style="color:#ff4d1c">Sense</span></span>
+  </div>
+
+  <div class="nav-links-desktop">
+    <a href="#" class="nav-link">How it works</a>
+    <a href="#" class="nav-link">Pricing</a>
+    <a href="#" class="nav-link">Docs</a>
+  </div>
+
+  <div class="nav-actions">
+    <button class="ss-ghost" style="padding:8px 18px;font-size:13px">Sign in</button>
+    <button class="ss-primary" style="padding:8px 20px;font-size:13px">Start free →</button>
+  </div>
+
+  <button class="hamburger" id="hamburger" onclick="toggleMenu()" aria-label="Open menu">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- ── MOBILE MENU ── -->
+<div class="mobile-menu" id="mobile-menu">
+  <div class="mob-nav-links">
+    <button class="mob-nav-link" onclick="toggleMenu()">
+      How it works <span class="arrow">→</span>
+    </button>
+    <button class="mob-nav-link" onclick="toggleMenu()">
+      Pricing <span class="arrow">→</span>
+    </button>
+    <button class="mob-nav-link" onclick="toggleMenu()">
+      Docs <span class="arrow">→</span>
+    </button>
+  </div>
+  <div class="mob-actions">
+    <button class="mob-sign-in" onclick="toggleMenu()">Sign in</button>
+    <button class="mob-cta" onclick="toggleMenu()">Start free →</button>
+  </div>
+</div>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-bg-grid"></div>
+  <div class="hero-glow"></div>
+
+  <div class="hero-grid">
+    <!-- Left -->
+    <div>
+      <!-- Pill -->
+      <div class="fu hero-pill-wrap" style="animation-delay:.05s;margin-bottom:28px">
+        <a href="#" id="pill" class="hero-pill" style="display:inline-flex;align-items:center;gap:8px;font-size:13px;color:#888;border:1px solid #1f1f1f;padding:7px 16px;border-radius:100px;background:#0a0a0a;transition:border-color .2s,color .2s">
+          <span style="width:6px;height:6px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e88"></span>
+          Shopify OAuth live · See how it works
+          <span style="font-size:11px;color:#444">→</span>
+        </a>
+      </div>
+
+      <!-- H1 with rotating word -->
+      <h1 class="fu" style="animation-delay:.15s;font-family:'Instrument Serif',serif;font-size:clamp(46px,6.5vw,84px);font-weight:400;line-height:1.06;letter-spacing:-.03em;margin-bottom:28px">
+        The agent that<br/>
+        <span id="rotating-word" style="color:#ff4d1c;font-style:italic;display:inline-block;min-width:160px;transition:opacity .28s ease,transform .28s ease">acts.</span>
+      </h1>
+
+      <p class="fu hero-sub" style="animation-delay:.28s;font-size:18px;color:#888;line-height:1.7;max-width:480px;margin-bottom:40px;font-weight:300">
+        Connect your Shopify store. StockSense reads your inventory, reasons through it like an ops manager, and sends purchase orders automatically — before you run out.
+      </p>
+
+      <!-- CTAs -->
+      <div class="fu hero-btns" style="animation-delay:.38s;display:flex;gap:12px;flex-wrap:wrap">
+        <button class="ss-primary" style="font-size:15px">Connect your store →</button>
+        <button class="ss-ghost" style="font-size:15px">See it in action</button>
+      </div>
+
+      <!-- Social proof logos -->
+      <div class="fu social-label" style="animation-delay:.5s;margin-top:36px">
+        <div style="font-size:11px;color:#333;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px">Built with</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center" id="logos-row"></div>
+      </div>
+    </div>
+
+    <!-- Right: live feed -->
+    <div class="feed-col fu" style="animation-delay:.45s">
+      <div class="live-feed">
+        <div class="feed-header">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="feed-dot"></div>
+            <span style="font-size:12px;color:#555;font-family:'JetBrains Mono',monospace">agent · live</span>
+          </div>
+          <span style="font-size:11px;color:#333">last 24h</span>
+        </div>
+        <div id="feed-rows"></div>
+      </div>
+
+      <div class="stat-mini">
+        <div class="stat-mini-card">
+          <div style="font-family:'Instrument Serif',serif;font-size:26px;color:#f0ede8">12d</div>
+          <div style="font-size:11px;color:#444;margin-top:6px;line-height:1.4">avg stockout predicted early</div>
+        </div>
+        <div class="stat-mini-card">
+          <div style="font-family:'Instrument Serif',serif;font-size:26px;color:#f0ede8">1-click</div>
+          <div style="font-size:11px;color:#444;margin-top:6px;line-height:1.4">to approve &amp; send PO</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FEATURE PILLS ── -->
+<div style="border-top:1px solid #111;border-bottom:1px solid #111;padding:28px 40px;background:#080808" class="feature-pills-wrap">
+  <div style="max-width:1200px;margin:0 auto;display:flex;gap:10px;flex-wrap:wrap" id="feature-pills"></div>
+</div>
+
+<!-- ── POSITIONING STRIP ── -->
+<section class="positioning" style="padding:80px 40px;max-width:1200px;margin:0 auto;padding-left:40px;padding-right:40px">
+  <div class="pos-grid">
+    <!-- Left: every other tool -->
+    <div class="pos-col" style="background:#080808;border-right:1px solid #141414">
+      <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#333;margin-bottom:24px;font-weight:500">Every other tool</div>
+      <div id="old-world"></div>
+    </div>
+    <!-- Right: StockSense -->
+    <div class="pos-col" style="background:#0a0806">
+      <div style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#ff4d1c;margin-bottom:24px;font-weight:500">StockSense Agent</div>
+      <div id="new-world"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── BOTTOM CTA ── -->
+<section class="bottom-cta" style="padding:60px 40px 100px;max-width:700px;margin:0 auto;text-align:center;padding-left:40px;padding-right:40px">
+  <div class="cta-inner" style="padding:64px 48px;border:1px solid #1a1a1a;border-radius:18px;background:#080808;position:relative;overflow:hidden">
+    <div style="position:absolute;top:-60px;left:50%;transform:translateX(-50%);width:340px;height:240px;background:radial-gradient(ellipse,#ff4d1c12,transparent 68%);pointer-events:none"></div>
+    <div style="position:relative">
+      <h2 style="font-family:'Instrument Serif',serif;font-size:clamp(28px,4vw,44px);font-weight:400;letter-spacing:-.02em;margin-bottom:14px;line-height:1.15">
+        Your inventory shouldn't<br/><span style="font-style:italic;color:#888">need your attention.</span>
+      </h2>
+      <p style="color:#555;font-size:15px;margin-bottom:36px;line-height:1.6">
+        Connect your Shopify store in 2 minutes. StockSense starts reasoning through your inventory immediately — no setup, no configuration.
+      </p>
+      <div class="cta-btns" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+        <button class="ss-primary" style="font-size:15px">Start for free →</button>
+        <button class="ss-ghost" style="font-size:15px">Learn more</button>
+      </div>
+      <div style="margin-top:20px;font-size:12px;color:#333">
+        No credit card · Free plan up to 10 SKUs · Cancel anytime
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer style="padding:28px 40px;border-top:1px solid #111;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px">
+  <div style="display:flex;align-items:center;gap:8px">
+    <div style="width:22px;height:22px;background:#ff4d1c;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff">S</div>
+    <span style="font-weight:500;font-size:14px">StockSense</span>
+    <span style="color:#252525;font-size:13px;margin-left:6px">· by Interluty Inc.</span>
+  </div>
+  <div style="font-size:12px;color:#252525">© 2026 StockSense</div>
+  <div style="display:flex;gap:22px;font-size:13px;color:#333">
+    <a href="#" onmouseenter="this.style.color='#777'" onmouseleave="this.style.color='#333'" style="transition:color .2s">Privacy</a>
+    <a href="#" onmouseenter="this.style.color='#777'" onmouseleave="this.style.color='#333'" style="transition:color .2s">Terms</a>
+    <a href="#" onmouseenter="this.style.color='#777'" onmouseleave="this.style.color='#333'" style="transition:color .2s">Docs</a>
+  </div>
+</footer>
+
+<script>
+/* ── Data ── */
+const WORDS = ["acts.", "reasons.", "predicts.", "decides.", "ships."];
+
+const FEED_ITEMS = [
+  { store:"PeakGear Store",   action:"Reorder approved",      sku:"Trail Boot X4",    qty:"200 units", dot:"#22c55e", time:"2m ago" },
+  { store:"UrbanCycle Co.",   action:"Stockout prevented",    sku:"Helmet Pro V2",    qty:"80 units",  dot:"#3b82f6", time:"8m ago" },
+  { store:"Nordic Home",      action:"PO sent to supplier",   sku:"Wool Throw Set",   qty:"120 units", dot:"#ff4d1c", time:"15m ago" },
+  { store:"TechDesk EU",      action:"Demand spike detected", sku:"Standing Mat",     qty:"alert",     dot:"#f59e0b", time:"31m ago" },
+  { store:"Maison Lumière",   action:"Reorder approved",      sku:"Candle Set S/3",   qty:"160 units", dot:"#22c55e", time:"44m ago" },
+];
+
+const LOGOS = ["Shopify","Stripe","Anthropic","Vercel","Resend","Supabase"];
+
+const FEATURES = [
+  { icon:"⚡", label:"Real-time sync" },
+  { icon:"🧠", label:"AI reasoning" },
+  { icon:"📋", label:"Auto PO generation" },
+  { icon:"✉️",  label:"Supplier email" },
+  { icon:"📈", label:"Demand forecasting" },
+  { icon:"🔒", label:"RLS-secured data" },
+];
+
+const OLD_WORLD = [
+  "Shows you a dashboard of stock levels",
+  "Sends an alert when you're already too late",
+  "Tells you what happened",
+  "You still decide what to order and when",
+  "Black box — zero explanation",
+];
+
+const NEW_WORLD = [
+  "Reasons through data like an ops manager",
+  "Predicts stockouts weeks before they happen",
+  "Tells you what to do — and exactly why",
+  "Generates purchase orders autonomously",
+  "Explains every decision in plain language",
+];
+
+/* ── Rotating word ── */
+let wordIdx = 0;
+const wordEl = document.getElementById('rotating-word');
+setInterval(() => {
+  wordEl.style.opacity = '0';
+  wordEl.style.transform = 'translateY(-10px)';
+  setTimeout(() => {
+    wordIdx = (wordIdx + 1) % WORDS.length;
+    wordEl.textContent = WORDS[wordIdx];
+    wordEl.style.opacity = '1';
+    wordEl.style.transform = 'translateY(0)';
+  }, 280);
+}, 2200);
+
+/* ── Live feed ── */
+let feedOffset = 0;
+const feedEl = document.getElementById('feed-rows');
+
+function renderFeed() {
+  const items = [
+    FEED_ITEMS[feedOffset % FEED_ITEMS.length],
+    FEED_ITEMS[(feedOffset + 1) % FEED_ITEMS.length],
+    FEED_ITEMS[(feedOffset + 2) % FEED_ITEMS.length],
+  ];
+  feedEl.innerHTML = items.map((item, i) => `
+    <div class="feed-row${i === 0 ? ' new' : ''}">
+      <div style="width:8px;height:8px;border-radius:50%;background:${item.dot};flex-shrink:0"></div>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <span style="font-size:13px;color:#f0ede8;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">${item.action}</span>
+          <span style="font-size:11px;color:#333;flex-shrink:0;margin-left:8px">${item.time}</span>
+        </div>
+        <div style="font-size:12px;color:#555;margin-top:2px">${item.store} · ${item.sku} · <span style="color:#444">${item.qty}</span></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+renderFeed();
+
+// Start feed rotation when in view
+const feedObs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting) {
+      setInterval(() => { feedOffset++; renderFeed(); }, 2800);
+      feedObs.disconnect();
+    }
+  });
+}, { threshold: 0.1 });
+feedObs.observe(feedEl);
+
+/* ── Logos ── */
+document.getElementById('logos-row').innerHTML = LOGOS.map(l =>
+  `<span style="font-size:12px;color:#3a3a3a;font-weight:500;letter-spacing:.02em;padding:5px 12px;border:1px solid #1a1a1a;border-radius:6px;background:#080808">${l}</span>`
+).join('');
+
+/* ── Feature pills ── */
+document.getElementById('feature-pills').innerHTML = FEATURES.map(f =>
+  `<div class="feature-pill"><span style="font-size:14px">${f.icon}</span>${f.label}</div>`
+).join('');
+
+/* ── Positioning ── */
+document.getElementById('old-world').innerHTML = OLD_WORLD.map(t =>
+  `<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px">
+    <span style="color:#2a2a2a;font-size:14px;margin-top:1px;flex-shrink:0">✕</span>
+    <span style="font-size:14px;color:#444;line-height:1.5">${t}</span>
+  </div>`
+).join('');
+document.getElementById('new-world').innerHTML = NEW_WORLD.map(t =>
+  `<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:16px">
+    <span style="color:#22c55e;font-size:14px;margin-top:1px;flex-shrink:0">✓</span>
+    <span style="font-size:14px;color:#999;line-height:1.5">${t}</span>
+  </div>`
+).join('');
+
+/* ── Hamburger ── */
+function toggleMenu() {
+  document.getElementById('hamburger').classList.toggle('open');
+  document.getElementById('mobile-menu').classList.toggle('open');
+}
+window.addEventListener('resize', () => {
+  if(window.innerWidth > 640) {
+    document.getElementById('hamburger').classList.remove('open');
+    document.getElementById('mobile-menu').classList.remove('open');
+  }
+});
+
+/* ── Pill hover ── */
+const pill = document.getElementById('pill');
+pill.addEventListener('mouseenter', () => { pill.style.borderColor = '#333'; pill.style.color = '#f0ede8'; });
+pill.addEventListener('mouseleave', () => { pill.style.borderColor = '#1f1f1f'; pill.style.color = '#888'; });
+</script>
+</body>
+</html>
