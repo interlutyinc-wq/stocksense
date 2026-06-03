@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { MarketingLanding } from "./marketing-landing";
+import { EnterpriseLanding } from "../_landing/EnterpriseLanding";
 import Script from "next/script";
 
 export const metadata: Metadata = {
@@ -122,7 +122,7 @@ export default function MarketingPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <MarketingLanding />
+      <EnterpriseLanding />
     </>
   );
 }
